@@ -17,12 +17,12 @@ def main():
     kinematic_viscosity = 0.1
     density = 1.
     top_velocity = 1.
-    num_poison_iterations = 50
+    num_poisson_iterations = 50
     stability_safety_factor = 0.5
 
     # Solve the Navier-Stokes Equation once
     (X, Y, u, v, p) = solve_navier_stokes(num_elements, domain_size, num_iterations, time_step ,
-                        kinematic_viscosity, density, top_velocity, num_poison_iterations,
+                        kinematic_viscosity, density, top_velocity, num_poisson_iterations,
                         stability_safety_factor)
 
     # plot the data

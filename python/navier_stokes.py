@@ -18,11 +18,11 @@ I have left these paramters able to be changed.
 - kinematic_visocsity is a constant of the fluid
 - density is also a constant of the fluid
 - top_velocity is the speed at which we have fluid flowing across the top of our box
-- num_poison_iterations is the number of equializing steps that we take after each time step
+- num_poisson_iterations is the number of equializing steps that we take after each time step
 - stability_safety_factor is a constant describing our desired stability of the sim
 '''
 def solve_navier_stokes(num_elements = 41, domain_size = 1.0, num_iterations = 1000, time_step = 0.001,
-                        kinematic_viscosity = 0.1, density = 1., top_velocity = 1., num_poison_iterations = 50,
+                        kinematic_viscosity = 0.1, density = 1., top_velocity = 1., num_poisson_iterations = 50,
                         stability_safety_factor = 0.5):
 
     # define the x and y values
@@ -63,7 +63,7 @@ def solve_navier_stokes(num_elements = 41, domain_size = 1.0, num_iterations = 1
         # solve pressure poisson equation
         right_hand_side = (density / time_step) * (du_tentative_dx + dv_tentative_dy)
         p_next = np.zeros_like(p_previous)
-        for j in range(num_poison_iterations):
+        for j in range(num_poisson_iterations):
             p_next[1:-1, 1:-1] = ((right_hand_side[1:-1, 1:-1] * element_length**2) - (
                 p_previous[1:-1, :-2] + p_previous[1:-1, 2:] + p_previous[:-2, 1:-1] + p_previous[2:, 1:-1]
             )) * -0.25

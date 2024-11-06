@@ -3,7 +3,7 @@ Author: Daniel J. Vickers
 
 ## About
 
-This repository has been created for me to explore fluid simulation, as an attempt to move towards magnetohydro dynamics simulations. I have opted to start by solving the Navier-Stokes equations for fluid flow before adding the complexity of electromagnetism. This is also an opportunity for me to demonstrate an ability to write software in Python, C++, and CUDA.
+This repository has been created for me to explore fluid simulation, as an attempt to move towards magnetohydro dynamics simulations. I have opted to start by solving the incompressible Navier-Stokes equations for fluid flow before adding the complexity of electromagnetism. This is also an opportunity for me to demonstrate an ability to write software in Python, C++, and CUDA.
 
 The goal of this project overall is easy-to-read python code that will allow someone to properly learn Navier-Stokes, a C++/CUDA shared object library with python bindings for use in personal projects, and an exploration of benchmarks for performance of the various implementations fo the library.
 
@@ -15,9 +15,16 @@ The CUDA code is a large-scale parallel implementation of Navier-Stokes. I am le
 
 ## Python
 
-The most-basic implementation is a python version that leverages linear algebra in numpy. Because we will be implementing the Cpp and CUDA versions raw (without external libraries), the python implementation is quite optimial. The Python implementation is based upon an implementation that I found here: https://github.com/Ceyron/machine-learning-and-simulation/blob/main/english/simulation_scripts/lid_driven_cavity_python_simple.py
+The most-basic implementation is a python version that leverages linear algebra in numpy. Because we will be implementing the Cpp and CUDA versions raw (without external libraries), the python implementation is quite optimial.
+
+### Citations
+
+The Python implementation is based upon an implementation that I found here: https://github.com/Ceyron/machine-learning-and-simulation/blob/main/english/simulation_scripts/lid_driven_cavity_python_simple.py
 The results of that solver are captured in a youtube video here: https://www.youtube.com/watch?v=BQLvNLgMTQE
 I want it to be clear that this Python code is largely influenced by the contents of the repository I just provided. The C++ and CUDA implementations are my own.
+It is easy to find plentiful descriptions of Navier-Stokes online. I will link here the wiki page for the equations: https://en.wikipedia.org/wiki/Navier%E2%80%93Stokes_equations
+
+### Code Explained
 
 We will be tracking the pressure and velocity (stored as two patrices: u and v) of the fluid in the grid. To start, we instatiate our mesh grid:
 
@@ -56,7 +63,7 @@ def laplace(field, element_length):
     return diff
 ```
 
-We can then compute these for our velocities:
+We can then compute these for our velocities via the Couchy momentum equation:
 
 ```python
 # get tentative velocity
@@ -80,13 +87,13 @@ du_tentative_dx = central_difference_x(u_tentative, element_length)
 dv_tentative_dy = central_difference_y(v_tentative, element_length)
 ```
 
-We then use these velocities to solve the poison equation. We will perform an iterative number of poison steps to allow the fluid to settle over multiple steps.
+We then use these velocities to solve the pressure poisson equation. We will perform an iterative number of poison steps to allow the fluid to settle over multiple steps.
 
 ```python
 # solve pressure poisson equation
 right_hand_side = (density / time_step) * (du_tentative_dx + dv_tentative_dy)
 p_next = np.zeros_like(p_previous)
-for j in range(num_poison_iterations):
+for j in range(num_poisson_iterations):
     p_next[1:-1, 1:-1] = ((right_hand_side[1:-1, 1:-1] * element_length**2) - (
         p_previous[1:-1, :-2] + p_previous[1:-1, 2:] + p_previous[:-2, 1:-1] + p_previous[2:, 1:-1]
     )) * -0.25
@@ -129,6 +136,8 @@ u_previous = u_next
 v_previous = v_next
 p_previous = p_next
 ```
+
+### Results
 
 The result of the sim is the quiver plot below that captures the fluid velocity and pressure.
 

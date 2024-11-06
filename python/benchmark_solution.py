@@ -18,7 +18,7 @@ def main():
     kinematic_viscosity = 0.1
     density = 1.
     top_velocity = 1.
-    num_poison_iterations = 50
+    num_poisson_iterations = 50
     stability_safety_factor = 0.5
 
     num_simulations = 5000
@@ -28,7 +28,7 @@ def main():
     for i in tqdm(range(num_simulations)):
         start = time.perf_counter()
         solve_navier_stokes(num_elements, domain_size, num_iterations, time_step ,
-                        kinematic_viscosity, density, top_velocity, num_poison_iterations,
+                        kinematic_viscosity, density, top_velocity, num_poisson_iterations,
                         stability_safety_factor)
         stop = time.perf_counter()
         performance_ms[i] = (stop - start) * 1e3
