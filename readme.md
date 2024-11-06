@@ -26,4 +26,4 @@ I then tested the performance of our Navier-Stokes solver. The parameters here a
 
 The results of 5000 time trials for the Python version is shown below.
 
-![screenshot](screenshot.png)
+![screenshot](figures/python_benchmarks.png)
