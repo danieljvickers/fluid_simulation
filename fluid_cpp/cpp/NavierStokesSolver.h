@@ -10,25 +10,25 @@
 template <typename T>
 struct NavierStokesCell {
     // the x velcoity (u), y velocity (v), and pressure (p)
-    T u;
-    T v;
-    T p;
+    T u = 0.;
+    T v = 0.;
+    T p = 0.;
 
     // some values saved in the cell during computation
-    T d_u_d_x;
-    T d_u_d_y;
-    T d_v_d_x;
-    T d_v_d_y;
-    T u_laplacian;
-    T v_laplacian;
-    T du_dt;
-    T dv_dt;
-    T right_hand_size;
+    T du_dx = 0.;
+    T du_dy = 0.;
+    T dv_dx = 0.;
+    T dv_dy = 0.;
+    T u_laplacian = 0.;
+    T v_laplacian = 0.;
+    T du_dt = 0.;
+    T dv_dt = 0.;
+    T right_hand_size = 0.;
 
     // placeholder for the updated values of the sim
-    T u_next;
-    T v_next;
-    T p_next;
+    T u_next = 0.;
+    T v_next = 0.;
+    T p_next = 0.;
 
     // boundary conditions (BCs). NAN means no BC
     T u_boundary = NAN;
@@ -56,8 +56,16 @@ public:
     T stability_safety_factor = 0.5;
 
     NavierStokesSolver(int box_dimension_x, int box_dimension_y, T domain_size_x, T domain_size_y);
+    ~NavierStokesSolver();
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
+
+    int getCellIndex(int x_index, int y_index);
+    void computeCentralDifference(int index_x, int index_y);
+    void computeLaplacian(int index_x, int index_y);
+    void computeTimeDerivitive(int index_x, int index_y);
+    void takeTimeStep(int index_x, int index_y);
+    void computeRightHandSide(int index_x, int index_y);
 };
 
 // explicit instantiation allows float and double precision types
