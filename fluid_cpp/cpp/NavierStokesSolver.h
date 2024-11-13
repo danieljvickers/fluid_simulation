@@ -36,7 +36,7 @@ struct NavierStokesCell {
     T p_boundary = NAN;
 };
 
-template <typename T> class NavierStokesSolver {
+template <class T = float> class NavierStokesSolver {
 private:
     int box_dimension_x;
     int box_dimension_y;
@@ -55,9 +55,13 @@ public:
     int num_iterations = 1000;
     T stability_safety_factor = 0.5;
 
-    NavierStokesSolver(int box_dimension_x, int box_dimension_y);
+    NavierStokesSolver(int box_dimension_x, int box_dimension_y, T domain_size_x, T domain_size_y);
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
 };
+
+// explicit instantiation allows float and double precision types
+template class NavierStokesSolver<float>;
+template class NavierStokesSolver<double>;
 
 #endif //NAVIERSTOKESSOLVER_H

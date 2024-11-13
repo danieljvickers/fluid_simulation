@@ -4,15 +4,17 @@
 
 #include "NavierStokesSolver.h"
 
-template <typename T> NavierStokesSolver<T>::NavierStokesSolver(int box_dimension_x, int box_dimension_y) {
-    this->box_dimension_x = box_dimension_x;
-    this->box_dimension_y = box_dimension_y;
+template <class T>
+NavierStokesSolver<T>::NavierStokesSolver(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y) {
+    box_dimension_x = box_dim_x;
+    box_dimension_y = box_dim_y;
     this->cells = static_cast<NavierStokesCell<T>*>(malloc(sizeof(NavierStokesCell<T>) * box_dimension_x * box_dimension_y));
 
-    this->setDomainSize(1.0, 1.0);
+    this->setDomainSize(domain_size_x, domain_size_x);
 }
 
-template <typename T> int NavierStokesSolver<T>::setBoxDimenension(int box_dimension_x, int box_dimension_y) {
+template <class T>
+int NavierStokesSolver<T>::setBoxDimenension(int box_dimension_x, int box_dimension_y) {
     if (box_dimension_x == this->box_dimension_x && box_dimension_y == this->box_dimension_y) {
         return -1;
     }
@@ -21,10 +23,12 @@ template <typename T> int NavierStokesSolver<T>::setBoxDimenension(int box_dimen
     this->box_dimension_x = box_dimension_x;
     this->box_dimension_y = box_dimension_y;
     this->cells = static_cast<NavierStokesCell<T>*>(malloc(sizeof(NavierStokesCell<T>) * box_dimension_x * box_dimension_y));
+    this->setDomainSize(this->domain_size_x, this->domain_size_y);
     return 0;
 }
 
-template <typename T> int NavierStokesSolver<T>::setDomainSize(T domain_size_x, T domain_size_y) {
+template <class T>
+int NavierStokesSolver<T>::setDomainSize(T domain_size_x, T domain_size_y) {
     this->domain_size_x = domain_size_x;
     this->domain_size_y = domain_size_y;
 
