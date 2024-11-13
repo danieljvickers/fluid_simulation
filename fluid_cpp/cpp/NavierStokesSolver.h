@@ -66,6 +66,8 @@ public:
     void computeTimeDerivitive(int index_x, int index_y);
     void takeTimeStep(int index_x, int index_y);
     void computeRightHandSide(int index_x, int index_y);
+    void enforcePressureBoundaryConditions();
+    void updatePressure();
 };
 
 // explicit instantiation allows float and double precision types

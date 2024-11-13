@@ -109,3 +109,57 @@ void NavierStokesSolver<T>::computeRightHandSide(int const index_x, int const in
     int index = getCellIndex(index_x, index_y);
     cells[index].right_hand_size = (density / time_step) * (cells[index].du_dx + cells[index].dv_dy);
 }
+
+
+
+template<class T>
+void NavierStokesSolver<T>::enforcePressureBoundaryConditions() {
+    // check the interior for any BC
+    for (int x = 1; x < domain_size_x - 1; x++) {
+        for (int y = 1; y < domain_size_y - 1; y++) {
+            int index = getCellIndex(x, y);
+            if (!std::isnan(cells[index].p_boundary)) {
+                cells[index].p = cells[index].p_boundary;  // enforce the BC if it has been set
+            }
+        }
+    }
+
+    // set the edges to be continuous with the interior
+    for (int x = 0; x < domain_size_x; x++) {
+        if (std::isnan(cells[getCellIndex(x, 0)])) {
+            cells[getCellIndex(x, 0)].p_next = cells[getCellIndex(x, 1)].p_next;
+        } else {
+            cells[getCellIndex(x, 0)].p_next = cells[getCellIndex(x, 0)].p_boundary;
+        }
+
+        if (std::isnan(cells[getCellIndex(x, domain_size_y - 1)])) {
+            cells[getCellIndex(x, domain_size_y - 1)].p_next = cells[getCellIndex(x, domain_size_y - 2)].p_next;
+        } else {
+            cells[getCellIndex(x, domain_size_y - 1)].p_next = cells[getCellIndex(x, domain_size_y - 1)].p_boundary;
+        }
+    }
+
+    for (int y = 1; y < domain_size_y - 1; y++) {
+        if (std::isnan(cells[getCellIndex(0, y)])) {
+            cells[getCellIndex(0, y)].p_next = cells[getCellIndex(1, y)].p_next;
+        } else {
+            cells[getCellIndex(0, y)].p_next = cells[getCellIndex(0, y)].p_boundary;
+        }
+        if (std::isnan(cells[getCellIndex(domain_size_x - 1, y)])) {
+            cells[ggetCellIndex(domain_size_x - 1, y)].p_next = cells[getCellIndex(domain_size_x - 2, y)].p_next;
+        } else {
+            cells[getCellIndex(domain_size_x - 1, y)].p_next = cells[getCellIndex(domain_size_x - 1, y)].p_boundary;
+        }
+    }
+}
+
+template<class T>
+void NavierStokesSolver<T>::updatePressure() {
+    // check the interior for any BC
+    for (int x = 1; x < domain_size_x - 1; x++) {
+        for (int y = 1; y < domain_size_y - 1; y++) {
+            int index = getCellIndex(x, y);
+            cells[index].p = cells[index].p_next;
+        }
+    }
+}
