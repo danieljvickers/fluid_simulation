@@ -29,6 +29,10 @@ struct NavierStokesCell {
     T u_next = 0.;
     T v_next = 0.;
     T p_next = 0.;
+    T du_next_dx = 0.;
+    T dv_next_dy = 0.;
+    T dp_dx = 0.;
+    T dp_dy = 0.;
 
     // boundary conditions (BCs). NAN means no BC
     T u_boundary = NAN;
@@ -47,6 +51,19 @@ private:
 
     NavierStokesCell<T>* cells;
 
+    void computeCentralDifference(int index_x, int index_y);
+    void computeLaplacian(int index_x, int index_y);
+    void computeTimeDerivitive(int index_x, int index_y);
+    void takeTimeStep(int index_x, int index_y);
+    void computeNextCentralDifference(int index_x, int index_y);
+    void computeRightHandSide(int index_x, int index_y);
+    void computePoissonStepApproximation(int index_x, int index_y);
+    void enforcePressureBoundaryConditions();
+    void updatePressure();
+    void computePressureCentralDifference(int index_x, int index_y);
+    void correctVelocityEstimates(int index_x, int index_y);
+    void enforceVelocityBoundaryConditions();
+
 public:
     T time_step = 0.001;
     T kinematic_viscosity = 0.1;
@@ -60,14 +77,8 @@ public:
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
 
+    void solve();
     int getCellIndex(int x_index, int y_index);
-    void computeCentralDifference(int index_x, int index_y);
-    void computeLaplacian(int index_x, int index_y);
-    void computeTimeDerivitive(int index_x, int index_y);
-    void takeTimeStep(int index_x, int index_y);
-    void computeRightHandSide(int index_x, int index_y);
-    void enforcePressureBoundaryConditions();
-    void updatePressure();
 };
 
 // explicit instantiation allows float and double precision types
