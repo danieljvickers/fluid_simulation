@@ -25,7 +25,6 @@ struct NavierStokesCell {
     T dv_dt;
     T right_hand_size;
 
-
     // placeholder for the updated values of the sim
     T u_next;
     T v_next;
@@ -37,26 +36,28 @@ struct NavierStokesCell {
     T p_boundary = NAN;
 };
 
-template <typename T>
-class NavierStokesSolver {
+template <typename T> class NavierStokesSolver {
 private:
     int box_dimension_x;
-    int box_dimenstion_y;
+    int box_dimension_y;
     T domain_size_x;
     T domain_size_y;
     T element_length_x;
     T element_length_y;
 
-public:
-    T time_step;
-    T kinematic_viscosity;
-    T density;
-    int num_poisson_iterations;
-    T stability_safety_factor;
-
     NavierStokesCell<T>* cells;
+
+public:
+    T time_step = 0.001;
+    T kinematic_viscosity = 0.1;
+    T density = 1.0;
+    int num_poisson_iterations = 50;
+    int num_iterations = 1000;
+    T stability_safety_factor = 0.5;
+
+    NavierStokesSolver(int box_dimension_x, int box_dimension_y);
+    int setBoxDimenension(int x_dim, int y_dim);
+    int setDomainSize(T domain_size_x, T domain_size_y);
 };
-
-
 
 #endif //NAVIERSTOKESSOLVER_H
