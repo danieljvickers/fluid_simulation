@@ -151,3 +151,17 @@ I then tested the performance of our Navier-Stokes solver. The parameters here a
 The results of 5000 time trials for the Python version is shown below.
 
 ![screenshot](figures/python_benchmarks.png)
+
+## C++
+
+### Code Explained
+
+The best explanation of the C++ implementation can be found in the readme for the cpp directory. The primary note is that this code is a direct port of the python code. It was also templated for floating point and double precisions.
+
+### Results
+
+The timing performance of each template of the code is similar enough to only present one iteration. We can view the single-point precision performance on my machine below:
+
+![screenshot](figures/cpp_float_benchmarks.png)
+
+I we see that we have reduced the average completion time by about a factor of x7 performance improvement moving to C++. This is significant, as I am now able to gather this same data on the order of minutes as opposed to about an hour. Due to the sheer amount of compute being performed before visualization, we would expect the CUDA implementation to yield the most-significant improvement, which we explore in the next section.
