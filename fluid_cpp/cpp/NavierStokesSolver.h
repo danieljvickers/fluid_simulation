@@ -76,9 +76,16 @@ public:
     ~NavierStokesSolver();
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
+    int setUBoundaryCondition(int x_index, int y_index, T BC);
+    int setVBoundaryCondition(int x_index, int y_index, T BC);
+    int setPBoundaryCondition(int x_index, int y_index, T BC);
 
     void solve();
     int getCellIndex(int x_index, int y_index);
+
+    int getUValues(T* output);
+    int getVValues(T* output);
+    int getPValues(T* output);
 };
 
 // explicit instantiation allows float and double precision types

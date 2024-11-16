@@ -47,6 +47,27 @@ int NavierStokesSolver<T>::setDomainSize(T domain_size_x, T domain_size_y) {
 }
 
 template <class T>
+int NavierStokesSolver<T>::setUBoundaryCondition(int const x_index, int const y_index, T const BC) {
+    int index = getCellIndex(x_index, y_index);
+    this->cells[index].u_boundary = BC;
+    return 0;
+}
+
+template <class T>
+int NavierStokesSolver<T>::setVBoundaryCondition(int const x_index, int const y_index, T const BC) {
+    int index = getCellIndex(x_index, y_index);
+    this->cells[index].v_boundary = BC;
+    return 0;
+}
+
+template <class T>
+int NavierStokesSolver<T>::setPBoundaryCondition(int const x_index, int const y_index, T const BC) {
+    int index = getCellIndex(x_index, y_index);
+    this->cells[index].p_boundary = BC;
+    return 0;
+}
+
+template <class T>
 void NavierStokesSolver<T>::solve() {
     // loop over each time step
     for (int i = 0; i < num_iterations; i++) {
@@ -333,4 +354,28 @@ void NavierStokesSolver<T>::enforceVelocityBoundaryConditions() {
             cells[getCellIndex(domain_size_x - 1, y)].v = cells[getCellIndex(domain_size_x - 1, y)].v_boundary;
         }
     }
+}
+
+template <class T>
+int NavierStokesSolver<T>::getUValues(T* output) {
+    for (int i = 0; i < this->box_dimension_x * this->box_dimension_y; i++) {
+        output[i] = this->cells[i].u;
+    }
+    return 0;
+}
+
+template <class T>
+int NavierStokesSolver<T>::getVValues(T* output) {
+    for (int i = 0; i < this->box_dimension_x * this->box_dimension_y; i++) {
+        output[i] = this->cells[i].v;
+    }
+    return 0;
+}
+
+template <class T>
+int NavierStokesSolver<T>::getPValues(T* output) {
+    for (int i = 0; i < this->box_dimension_x * this->box_dimension_y; i++) {
+        output[i] = this->cells[i].p;
+    }
+    return 0;
 }
