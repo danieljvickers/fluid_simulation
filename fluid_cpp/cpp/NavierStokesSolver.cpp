@@ -74,43 +74,42 @@ int NavierStokesSolver<T>::setPBoundaryCondition(int const x_index, int const y_
 template <class T>
 void NavierStokesSolver<T>::solve() {
     // loop over each time step
-    for (int i = 0; i < num_iterations; i++) {
+    for (int i = 0; i < this->num_iterations; i++) {
         // loop over every cell in the space
-        for (int x = 1; x < box_dimension_x - 1; x++) {
-            for (int y = 1; y < box_dimension_y - 1; y++) {
+        for (int x = 1; x < this->box_dimension_x - 1; x++) {
+            for (int y = 1; y < this->box_dimension_y - 1; y++) {
                 // compute the initial derivates for u and v
-                computeCentralDifference(x, y);
-                computeLaplacian(x, y);
-                computeTimeDerivitive(x, y);
+                this->computeCentralDifference(x, y);
+                this->computeLaplacian(x, y);
+                this->computeTimeDerivitive(x, y);
 
                 // take a tenative step forward in time
-                takeTimeStep(x, y);
-                computeNextCentralDifference(x, y); // recompute the central difference
-                computeRightHandSide(x, y);
+                this->takeTimeStep(x, y);
+                this->computeNextCentralDifference(x, y); // recompute the central difference
+                this->computeRightHandSide(x, y);
             }
         }
-    }
+        // take a series of poisson steps to approximate the pressure in each cell
+        for (int j = 0; j < this->num_poisson_iterations; j++) {
+            for (int x = 1; x < this->box_dimension_x - 1; x++) {
+                for (int y = 1; y < this->box_dimension_y - 1; y++) {
+                    this->computePoissonStepApproximation(x, y);
+                }
+            }
+            this->enforcePressureBoundaryConditions();
+            this->updatePressure();
+        }
 
-    // take a series of poisson steps to approximate the pressure in each cell
-    for (int j = 0; j < num_poisson_iterations; j++) {
-        for (int x = 1; x < box_dimension_x - 1; x++) {
-            for (int y = 1; y < box_dimension_y - 1; y++) {
-                computePoissonStepApproximation(x, y);
+        // get the pressure central difference, and set the u and v values
+        for (int x = 1; x < this->box_dimension_x - 1; x++) {
+            for (int y = 1; y < this->box_dimension_y - 1; y++) {
+                this->computePressureCentralDifference(x, y);
+                this->correctVelocityEstimates(x, y);
             }
         }
-        enforcePressureBoundaryConditions();
-        updatePressure();
-    }
 
-    // get the pressure central difference, and set the u and v values
-    for (int x = 1; x < box_dimension_x - 1; x++) {
-        for (int y = 1; y < box_dimension_y - 1; y++) {
-            computePressureCentralDifference(x, y);
-            correctVelocityEstimates(x, y);
-        }
+        enforceVelocityBoundaryConditions();
     }
-
-    enforceVelocityBoundaryConditions();
 }
 
 template <class T>
@@ -363,7 +362,6 @@ void NavierStokesSolver<T>::enforceVelocityBoundaryConditions() {
 template <class T>
 int NavierStokesSolver<T>::getUValues(T* output) {
     for (int i = 0; i < this->box_dimension_x * this->box_dimension_y; i++) {
-        output[i] = this->cells[i].u;
         std::cout << "U Values: " << output[i] << " :: " << this->cells[i].u << std::endl;
     }
     return 0;
