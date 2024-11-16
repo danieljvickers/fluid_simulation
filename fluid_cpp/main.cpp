@@ -51,8 +51,8 @@ int main() {
     p_file.open("CppPValues.float.dat", std::ios::binary);
     for (int i = 0; i < num_x_bins * num_y_bins; i++) {
         u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(float));
-        u_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
-        u_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
+        v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
+        p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
     }
 
     // clean up
@@ -62,6 +62,7 @@ int main() {
     free(u_values);
     free(v_values);
     free(p_values);
+    return 0;
 
 
     // run time trials for the solver

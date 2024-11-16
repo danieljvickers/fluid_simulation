@@ -5,6 +5,7 @@
 #include "NavierStokesSolver.h"
 
 #include <ios>
+#include <iostream>
 
 template <class T>
 NavierStokesSolver<T>::NavierStokesSolver(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y) {
@@ -50,6 +51,7 @@ template <class T>
 int NavierStokesSolver<T>::setUBoundaryCondition(int const x_index, int const y_index, T const BC) {
     int index = getCellIndex(x_index, y_index);
     this->cells[index].u_boundary = BC;
+    this->cells[index].u = BC;
     return 0;
 }
 
@@ -57,6 +59,7 @@ template <class T>
 int NavierStokesSolver<T>::setVBoundaryCondition(int const x_index, int const y_index, T const BC) {
     int index = getCellIndex(x_index, y_index);
     this->cells[index].v_boundary = BC;
+    this->cells[index].v = BC;
     return 0;
 }
 
@@ -64,6 +67,7 @@ template <class T>
 int NavierStokesSolver<T>::setPBoundaryCondition(int const x_index, int const y_index, T const BC) {
     int index = getCellIndex(x_index, y_index);
     this->cells[index].p_boundary = BC;
+    this->cells[index].p = BC;
     return 0;
 }
 
@@ -360,6 +364,7 @@ template <class T>
 int NavierStokesSolver<T>::getUValues(T* output) {
     for (int i = 0; i < this->box_dimension_x * this->box_dimension_y; i++) {
         output[i] = this->cells[i].u;
+        std::cout << "U Values: " << output[i] << " :: " << this->cells[i].u << std::endl;
     }
     return 0;
 }
