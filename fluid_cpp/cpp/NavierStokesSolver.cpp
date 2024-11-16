@@ -52,6 +52,7 @@ int NavierStokesSolver<T>::setUBoundaryCondition(int const x_index, int const y_
     int index = getCellIndex(x_index, y_index);
     this->cells[index].u_boundary = BC;
     this->cells[index].u = BC;
+    this->cells[index].u_boundary_set = true;
     return 0;
 }
 
@@ -60,6 +61,7 @@ int NavierStokesSolver<T>::setVBoundaryCondition(int const x_index, int const y_
     int index = getCellIndex(x_index, y_index);
     this->cells[index].v_boundary = BC;
     this->cells[index].v = BC;
+    this->cells[index].v_boundary_set = true;
     return 0;
 }
 
@@ -68,6 +70,7 @@ int NavierStokesSolver<T>::setPBoundaryCondition(int const x_index, int const y_
     int index = getCellIndex(x_index, y_index);
     this->cells[index].p_boundary = BC;
     this->cells[index].p = BC;
+    this->cells[index].p_boundary_set = true;
     return 0;
 }
 
@@ -89,6 +92,7 @@ void NavierStokesSolver<T>::solve() {
                 this->computeRightHandSide(x, y);
             }
         }
+
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
             for (int x = 1; x < this->box_dimension_x - 1; x++) {
@@ -108,7 +112,7 @@ void NavierStokesSolver<T>::solve() {
             }
         }
 
-        enforceVelocityBoundaryConditions();
+        this->enforceVelocityBoundaryConditions();
     }
 }
 
@@ -159,7 +163,7 @@ void NavierStokesSolver<T>::computeTimeDerivitive(int const index_x, int const i
 
     // get the time derivitives
     cells[index].du_dt = kinematic_viscosity * cells[index].u_laplacian - cells[index].u * cells[index].du_dx - cells[index].v * cells[index].du_dy;
-    cells[index].du_dt = kinematic_viscosity * cells[index].u_laplacian - cells[index].u * cells[index].du_dx - cells[index].v * cells[index].du_dy;
+    cells[index].dv_dt = kinematic_viscosity * cells[index].v_laplacian - cells[index].u * cells[index].dv_dx - cells[index].v * cells[index].dv_dy;
 }
 
 template <class T>
@@ -209,49 +213,48 @@ void NavierStokesSolver<T>::computePoissonStepApproximation(int const index_x, i
 template <class T>
 void NavierStokesSolver<T>::enforcePressureBoundaryConditions() {
     // check the interior for any BC
-    for (int x = 1; x < domain_size_x - 1; x++) {
-        for (int y = 1; y < domain_size_y - 1; y++) {
-            int index = getCellIndex(x, y);
-            if (!std::isnan(cells[index].p_boundary)) {
-                cells[index].p_next = cells[index].p_boundary;  // enforce the BC if it has been set
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            int index = this->getCellIndex(x, y);
+            if (this->cells[index].p_boundary_set) {
+                cells[index].p_next = this->cells[index].p_boundary;  // enforce the BC if it has been set
             }
         }
     }
 
     // set the edges to be continuous with the interior
-    for (int x = 0; x < domain_size_x; x++) {
-        if (std::isnan(cells[getCellIndex(x, 0)].p_boundary)) {
+    for (int x = 0; x < box_dimension_x; x++) {
+        if (!cells[getCellIndex(x, 0)].p_boundary_set) {
             cells[getCellIndex(x, 0)].p_next = cells[getCellIndex(x, 1)].p_next;
         } else {
             cells[getCellIndex(x, 0)].p_next = cells[getCellIndex(x, 0)].p_boundary;
         }
 
-        if (std::isnan(cells[getCellIndex(x, domain_size_y - 1)].p_boundary)) {
-            cells[getCellIndex(x, domain_size_y - 1)].p_next = cells[getCellIndex(x, domain_size_y - 2)].p_next;
+        if (!cells[getCellIndex(x, box_dimension_y - 1)].p_boundary_set) {
+            cells[getCellIndex(x, box_dimension_y - 1)].p_next = cells[getCellIndex(x, box_dimension_y - 2)].p_next;
         } else {
-            cells[getCellIndex(x, domain_size_y - 1)].p_next = cells[getCellIndex(x, domain_size_y - 1)].p_boundary;
+            cells[getCellIndex(x, box_dimension_y - 1)].p_next = cells[getCellIndex(x, box_dimension_y - 1)].p_boundary;
         }
     }
 
-    for (int y = 1; y < domain_size_y - 1; y++) {
-        if (std::isnan(cells[getCellIndex(0, y)].p_boundary)) {
+    for (int y = 1; y < box_dimension_y - 1; y++) {
+        if (!cells[getCellIndex(0, y)].p_boundary_set) {
             cells[getCellIndex(0, y)].p_next = cells[getCellIndex(1, y)].p_next;
         } else {
             cells[getCellIndex(0, y)].p_next = cells[getCellIndex(0, y)].p_boundary;
         }
-        if (std::isnan(cells[getCellIndex(domain_size_x - 1, y)].p_boundary)) {
-            cells[getCellIndex(domain_size_x - 1, y)].p_next = cells[getCellIndex(domain_size_x - 2, y)].p_next;
+        if (!cells[getCellIndex(box_dimension_x - 1, y)].p_boundary_set) {
+            cells[getCellIndex(box_dimension_x - 1, y)].p_next = cells[getCellIndex(box_dimension_x - 2, y)].p_next;
         } else {
-            cells[getCellIndex(domain_size_x - 1, y)].p_next = cells[getCellIndex(domain_size_x - 1, y)].p_boundary;
+            cells[getCellIndex(box_dimension_x - 1, y)].p_next = cells[getCellIndex(box_dimension_x - 1, y)].p_boundary;
         }
     }
 }
 
 template <class T>
 void NavierStokesSolver<T>::updatePressure() {
-    // check the interior for any BC
-    for (int x = 0; x < domain_size_x - 1; x++) {
-        for (int y = 1; y < domain_size_y - 1; y++) {
+    for (int x = 1; x < box_dimension_x - 1; x++) {
+        for (int y = 1; y < box_dimension_y - 1; y++) {
             int index = getCellIndex(x, y);
             cells[index].p = cells[index].p_next;
         }
@@ -285,76 +288,76 @@ void NavierStokesSolver<T>::correctVelocityEstimates(int const index_x, int cons
 template <class T>
 void NavierStokesSolver<T>::enforceVelocityBoundaryConditions() {
     // check the interior for any BC
-    for (int x = 1; x < domain_size_x - 1; x++) {
-        for (int y = 1; y < domain_size_y - 1; y++) {
+    for (int x = 1; x < box_dimension_x - 1; x++) {
+        for (int y = 1; y < box_dimension_y - 1; y++) {
             int index = getCellIndex(x, y);
-            if (!std::isnan(cells[index].u_boundary)) {
+            if (cells[index].u_boundary_set) {
                 cells[index].u = cells[index].u_boundary;  // enforce the BC if it has been set
             }
-            if (!std::isnan(cells[index].v_boundary)) {
+            if (cells[index].v_boundary_set) {
                 cells[index].v = cells[index].v_boundary;  // enforce the BC if it has been set
             }
         }
     }
 
     // set the edges to be continuous with the interior
-    for (int x = 0; x < domain_size_x; x++) {
+    for (int x = 0; x < box_dimension_x; x++) {
         // check u bottom
-        if (std::isnan(cells[getCellIndex(x, 0)].u_boundary)) {
+        if (!cells[getCellIndex(x, 0)].u_boundary_set) {
             cells[getCellIndex(x, 0)].u = cells[getCellIndex(x, 1)].u;
         } else {
             cells[getCellIndex(x, 0)].u = cells[getCellIndex(x, 0)].u_boundary;
         }
 
         // check u top
-        if (std::isnan(cells[getCellIndex(x, domain_size_y - 1)].u_boundary)) {
-            cells[getCellIndex(x, domain_size_y - 1)].u = cells[getCellIndex(x, domain_size_y - 2)].u_next;
+        if (!cells[getCellIndex(x, box_dimension_y - 1)].u_boundary_set) {
+            cells[getCellIndex(x, box_dimension_y - 1)].u = cells[getCellIndex(x, box_dimension_y - 2)].u_next;
         } else {
-            cells[getCellIndex(x, domain_size_y - 1)].u = cells[getCellIndex(x, domain_size_y - 1)].u_boundary;
+            cells[getCellIndex(x, box_dimension_y - 1)].u = cells[getCellIndex(x, box_dimension_y - 1)].u_boundary;
         }
 
         // check v bottom
-        if (std::isnan(cells[getCellIndex(x, 0)].v_boundary)) {
+        if (!cells[getCellIndex(x, 0)].v_boundary_set) {
             cells[getCellIndex(x, 0)].v = cells[getCellIndex(x, 1)].v;
         } else {
             cells[getCellIndex(x, 0)].v = cells[getCellIndex(x, 0)].v_boundary;
         }
 
         // check v top
-        if (std::isnan(cells[getCellIndex(x, domain_size_y - 1)].v_boundary)) {
-            cells[getCellIndex(x, domain_size_y - 1)].v = cells[getCellIndex(x, domain_size_y - 2)].v_next;
+        if (!cells[getCellIndex(x, box_dimension_y - 1)].v_boundary_set) {
+            cells[getCellIndex(x, box_dimension_y - 1)].v = cells[getCellIndex(x, box_dimension_y - 2)].v_next;
         } else {
-            cells[getCellIndex(x, domain_size_y - 1)].v = cells[getCellIndex(x, domain_size_y - 1)].v_boundary;
+            cells[getCellIndex(x, box_dimension_y - 1)].v = cells[getCellIndex(x, box_dimension_y - 1)].v_boundary;
         }
     }
 
-    for (int y = 1; y < domain_size_y - 1; y++) {
+    for (int y = 1; y < box_dimension_y - 1; y++) {
         // check u left
-        if (std::isnan(cells[getCellIndex(0, y)].u_boundary)) {
+        if (!cells[getCellIndex(0, y)].u_boundary_set) {
             cells[getCellIndex(0, y)].u = cells[getCellIndex(1, y)].u_next;
         } else {
             cells[getCellIndex(0, y)].u = cells[getCellIndex(0, y)].u_boundary;
         }
 
         // check u right
-        if (std::isnan(cells[getCellIndex(domain_size_x - 1, y)].u_boundary)) {
-            cells[getCellIndex(domain_size_x - 1, y)].u = cells[getCellIndex(domain_size_x - 2, y)].u;
+        if (!cells[getCellIndex(box_dimension_x - 1, y)].u_boundary_set) {
+            cells[getCellIndex(box_dimension_x - 1, y)].u = cells[getCellIndex(box_dimension_x - 2, y)].u;
         } else {
-            cells[getCellIndex(domain_size_x - 1, y)].u = cells[getCellIndex(domain_size_x - 1, y)].u_boundary;
+            cells[getCellIndex(box_dimension_x - 1, y)].u = cells[getCellIndex(box_dimension_x - 1, y)].u_boundary;
         }
 
         // check v left
-        if (std::isnan(cells[getCellIndex(0, y)].v_boundary)) {
+        if (!cells[getCellIndex(0, y)].v_boundary_set) {
             cells[getCellIndex(0, y)].v = cells[getCellIndex(1, y)].v_next;
         } else {
             cells[getCellIndex(0, y)].v = cells[getCellIndex(0, y)].v_boundary;
         }
 
         // check v right
-        if (std::isnan(cells[getCellIndex(domain_size_x - 1, y)].v_boundary)) {
-            cells[getCellIndex(domain_size_x - 1, y)].v = cells[getCellIndex(domain_size_x - 2, y)].v;
+        if (!cells[getCellIndex(box_dimension_x - 1, y)].v_boundary_set) {
+            cells[getCellIndex(box_dimension_x - 1, y)].v = cells[getCellIndex(box_dimension_x - 2, y)].v;
         } else {
-            cells[getCellIndex(domain_size_x - 1, y)].v = cells[getCellIndex(domain_size_x - 1, y)].v_boundary;
+            cells[getCellIndex(box_dimension_x - 1, y)].v = cells[getCellIndex(box_dimension_x - 1, y)].v_boundary;
         }
     }
 }
@@ -362,7 +365,7 @@ void NavierStokesSolver<T>::enforceVelocityBoundaryConditions() {
 template <class T>
 int NavierStokesSolver<T>::getUValues(T* output) {
     for (int i = 0; i < this->box_dimension_x * this->box_dimension_y; i++) {
-        std::cout << "U Values: " << output[i] << " :: " << this->cells[i].u << std::endl;
+        output[i] = this->cells[i].u;
     }
     return 0;
 }

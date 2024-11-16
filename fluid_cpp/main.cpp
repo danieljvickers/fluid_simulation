@@ -25,6 +25,7 @@ int main() {
         solver.setVBoundaryCondition(x, 0, 0.);  // no flow into the floor
         solver.setUBoundaryCondition(x, num_y_bins - 1, 1.);  // water flowing to the right on top
         solver.setVBoundaryCondition(x, num_y_bins - 1, 0.);  // no flow into the top
+        solver.setPBoundaryCondition(x, num_y_bins - 1, 0.);  // no pressure at the top
     }
     for (int y = 0; y < num_y_bins; y++) {
         solver.setUBoundaryCondition(0, y, 0.);  // no flow into of the left wall
@@ -53,6 +54,7 @@ int main() {
         u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(float));
         v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
         p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
+        // std::cout << "Values: " << u_values[i] << " :: " << v_values[i] << " :: " << p_values[i] << std::endl;
     }
 
     // clean up

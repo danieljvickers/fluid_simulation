@@ -5,6 +5,7 @@
 #ifndef NAVIERSTOKESSOLVER_H
 #define NAVIERSTOKESSOLVER_H
 #include <cmath>
+#include <limits>
 
 // parameters of the cells
 template <typename T>
@@ -34,10 +35,14 @@ struct NavierStokesCell {
     T dp_dx = 0.;
     T dp_dy = 0.;
 
-    // boundary conditions (BCs). NAN means no BC
-    T u_boundary = NAN;
-    T v_boundary = NAN;
-    T p_boundary = NAN;
+    // boundary conditions (BCs). The set bool tells us if it has been set
+    T u_boundary = 0.;
+    T v_boundary = 0.;
+    T p_boundary = 0.;
+    bool u_boundary_set = false;
+    bool v_boundary_set = false;
+    bool p_boundary_set = false;
+
 };
 
 template <class T = float> class NavierStokesSolver {
