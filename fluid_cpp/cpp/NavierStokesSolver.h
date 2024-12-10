@@ -5,6 +5,7 @@
 #ifndef NAVIERSTOKESSOLVER_H
 #define NAVIERSTOKESSOLVER_H
 #include <cmath>
+#include <limits>
 
 // parameters of the cells
 template <typename T>
@@ -34,10 +35,14 @@ struct NavierStokesCell {
     T dp_dx = 0.;
     T dp_dy = 0.;
 
-    // boundary conditions (BCs). NAN means no BC
-    T u_boundary = NAN;
-    T v_boundary = NAN;
-    T p_boundary = NAN;
+    // boundary conditions (BCs). The set bool tells us if it has been set
+    T u_boundary = 0.;
+    T v_boundary = 0.;
+    T p_boundary = 0.;
+    bool u_boundary_set = false;
+    bool v_boundary_set = false;
+    bool p_boundary_set = false;
+
 };
 
 template <class T = float> class NavierStokesSolver {
@@ -51,17 +56,17 @@ private:
 
     NavierStokesCell<T>* cells;
 
-    void computeCentralDifference(int index_x, int index_y);
-    void computeLaplacian(int index_x, int index_y);
-    void computeTimeDerivitive(int index_x, int index_y);
-    void takeTimeStep(int index_x, int index_y);
-    void computeNextCentralDifference(int index_x, int index_y);
-    void computeRightHandSide(int index_x, int index_y);
-    void computePoissonStepApproximation(int index_x, int index_y);
+    void computeCentralDifference();
+    void computeLaplacian();
+    void computeTimeDerivitive();
+    void takeTimeStep();
+    void computeNextCentralDifference();
+    void computeRightHandSide();
+    void computePoissonStepApproximation();
     void enforcePressureBoundaryConditions();
     void updatePressure();
-    void computePressureCentralDifference(int index_x, int index_y);
-    void correctVelocityEstimates(int index_x, int index_y);
+    void computePressureCentralDifference();
+    void correctVelocityEstimates();
     void enforceVelocityBoundaryConditions();
 
 public:
@@ -76,9 +81,16 @@ public:
     ~NavierStokesSolver();
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
+    int setUBoundaryCondition(int x_index, int y_index, T BC);
+    int setVBoundaryCondition(int x_index, int y_index, T BC);
+    int setPBoundaryCondition(int x_index, int y_index, T BC);
 
     void solve();
     int getCellIndex(int x_index, int y_index);
+
+    int getUValues(T* output);
+    int getVValues(T* output);
+    int getPValues(T* output);
 };
 
 // explicit instantiation allows float and double precision types

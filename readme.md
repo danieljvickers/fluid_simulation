@@ -164,4 +164,14 @@ The timing performance of each template of the code is similar enough to only pr
 
 ![screenshot](figures/cpp_float_benchmarks.png)
 
-I we see that we have reduced the average completion time by about a factor of x7 performance improvement moving to C++. This is significant, as I am now able to gather this same data on the order of minutes as opposed to about an hour. Due to the sheer amount of compute being performed before visualization, we would expect the CUDA implementation to yield the most-significant improvement, which we explore in the next section.
+I we see that the C++ version is actually slower than the python version. Their are two primary explanations for this. First, the primary speed up we can achieve is by multithreading the code to outperform the python compute. There are also many redundant calculations for index values being performed.
+
+## CUDA
+
+### Code Explained
+
+This version of the code will function largely by paralellizing individual cell calculations on the interior. Specifically, the test case that we have been demonstrating is 41x41=1681 cells. Rather than assigning a single thread to iterate through the loop, we will assign a single GPU thread to each index in the array of elements, which will perform it's calculations in isolation. We will have some required break points in the code to synchronize the kernel executions and prevent race conditions.
+
+### Results
+
+None
