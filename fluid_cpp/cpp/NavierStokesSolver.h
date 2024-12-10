@@ -60,8 +60,8 @@ private:
     void computeLaplacian();
     void computeTimeDerivitive();
     void takeTimeStep();
-    void computeNextCentralDifference(int index_x, int index_y);
-    void computeRightHandSide(int index_x, int index_y);
+    void computeNextCentralDifference();
+    void computeRightHandSide();
     void computePoissonStepApproximation(int index_x, int index_y);
     void enforcePressureBoundaryConditions();
     void updatePressure();
