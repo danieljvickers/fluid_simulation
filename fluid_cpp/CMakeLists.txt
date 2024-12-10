@@ -9,9 +9,9 @@ add_library(fluid_cpp SHARED
         cpp/NavierStokesSolver.cpp
         cpp/NavierStokesSolver.h
         cpp/NavierStokesCell.h
-        cpp/SerielNavierStokes.cpp
-        cpp/SerielNavierStokes.h
-        cpp/SerielNavierStokes.h
+        cpp/SerialNavierStokes.cpp
+        cpp/SerialNavierStokes.h
+        cpp/SerialNavierStokes.h
 )
 
 add_library(fluid_cuda SHARED

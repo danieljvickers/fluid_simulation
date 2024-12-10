@@ -2,13 +2,13 @@
 // Created by dan on 12/10/24.
 //
 
-#ifndef SERIELNAVIERSTOKES_H
-#define SERIELNAVIERSTOKES_H
+#ifndef SERIALNAVIERSTOKES_H
+#define SERIALNAVIERSTOKES_H
 
 #include "NavierStokesSolver.h"
 
 template <class T = float>
-class SerielNavierStokes : public NavierStokesSolver<T> {
+class SerialNavierStokes : public NavierStokesSolver<T> {
 private:
     void computeCentralDifference();
     void computeLaplacian();
@@ -33,4 +33,4 @@ public:
 template class SerielNavierStokes<float>;
 template class SerielNavierStokes<double>;
 
-#endif //SERIELNAVIERSTOKES_H
+#endif //SERIALNAVIERSTOKES_H

@@ -2,23 +2,23 @@
 // Created by dan on 12/10/24.
 //
 
-#include "SerielNavierStokes.h"
+#include "SerialNavierStokes.h"
 #include "NavierStokesCell.h"
 
 template <class T>
-SerielNavierStokes<T>::SerielNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
+SerialNavierStokes<T>::SerialNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
     : NavierStokesSolver<T>(box_dim_x, box_dim_y, domain_size_x, domain_size_y) {
 
 }
 
 template <class T>
-SerielNavierStokes<T>::~SerielNavierStokes() {
+SerialNavierStokes<T>::~SerialNavierStokes() {
 
 }
 
 
 template <class T>
-void SerielNavierStokes<T>::solve() {
+void SerialNavierStokes<T>::solve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
         // compute useful derivatives
@@ -47,7 +47,7 @@ void SerielNavierStokes<T>::solve() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computeCentralDifference() {
+void SerialNavierStokes<T>::computeCentralDifference() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeices of neightboring cells
@@ -68,7 +68,7 @@ void SerielNavierStokes<T>::computeCentralDifference() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computeLaplacian() {
+void SerialNavierStokes<T>::computeLaplacian() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeices of neightboring cells
@@ -88,7 +88,7 @@ void SerielNavierStokes<T>::computeLaplacian() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computeTimeDerivitive() {
+void SerialNavierStokes<T>::computeTimeDerivitive() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeix in the array of cells
@@ -103,7 +103,7 @@ void SerielNavierStokes<T>::computeTimeDerivitive() {
 
 
 template <class T>
-void SerielNavierStokes<T>::takeTimeStep() {
+void SerialNavierStokes<T>::takeTimeStep() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeix in the array of cells
@@ -117,7 +117,7 @@ void SerielNavierStokes<T>::takeTimeStep() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computeNextCentralDifference() {
+void SerialNavierStokes<T>::computeNextCentralDifference() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeices of neightboring cells
@@ -135,7 +135,7 @@ void SerielNavierStokes<T>::computeNextCentralDifference() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computeRightHandSide() {
+void SerialNavierStokes<T>::computeRightHandSide() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             int index = this->getCellIndex(x, y);
@@ -145,7 +145,7 @@ void SerielNavierStokes<T>::computeRightHandSide() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computePoissonStepApproximation() {
+void SerialNavierStokes<T>::computePoissonStepApproximation() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeices of neightboring cells
@@ -164,7 +164,7 @@ void SerielNavierStokes<T>::computePoissonStepApproximation() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::enforcePressureBoundaryConditions() {
+void SerialNavierStokes<T>::enforcePressureBoundaryConditions() {
     // check the interior for any BC
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
@@ -205,7 +205,7 @@ void SerielNavierStokes<T>::enforcePressureBoundaryConditions() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::updatePressure() {
+void SerialNavierStokes<T>::updatePressure() {
     for (int x = 0; x < this->box_dimension_x; x++) {
         for (int y = 0; y < this->box_dimension_y; y++) {
             int index = this->getCellIndex(x, y);
@@ -215,7 +215,7 @@ void SerielNavierStokes<T>::updatePressure() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::computePressureCentralDifference() {
+void SerialNavierStokes<T>::computePressureCentralDifference() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
             //  get the indeices of neightboring cells
@@ -233,7 +233,7 @@ void SerielNavierStokes<T>::computePressureCentralDifference() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::correctVelocityEstimates() {
+void SerialNavierStokes<T>::correctVelocityEstimates() {
     for (int x = 0; x < this->box_dimension_x; x++) {
         for (int y = 0; y < this->box_dimension_y; y++) {
             int index = this->getCellIndex(x, y);
@@ -244,7 +244,7 @@ void SerielNavierStokes<T>::correctVelocityEstimates() {
 }
 
 template <class T>
-void SerielNavierStokes<T>::enforceVelocityBoundaryConditions() {
+void SerialNavierStokes<T>::enforceVelocityBoundaryConditions() {
     // check the interior for any BC
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
