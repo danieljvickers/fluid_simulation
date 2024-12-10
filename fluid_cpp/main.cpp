@@ -9,11 +9,9 @@ int main() {
     int num_y_bins = 41;
     float width = 1.0;
     float height = 1.0;
+    NavierStokesSolver<float> solver(num_x_bins, num_y_bins, width, height);
 
-
-
-    NavierStokesSolver<double> solver(num_x_bins, num_y_bins, width, height);
-
+    // entire specific constants of the simulation
     solver.density = 1.0;
     solver.kinematic_viscosity = 0.1;
     solver.num_iterations = 1000;
@@ -38,9 +36,9 @@ int main() {
 
     // Solve and retrieve the solution
     solver.solve();
-    double* u_values = static_cast<double*>(malloc(sizeof(double) * num_x_bins * num_y_bins));
-    double* v_values = static_cast<double*>(malloc(sizeof(double) * num_x_bins * num_y_bins));
-    double* p_values = static_cast<double*>(malloc(sizeof(double) * num_x_bins * num_y_bins));
+    auto* u_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
+    auto* v_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
+    auto* p_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
     solver.getUValues(u_values);
     solver.getVValues(v_values);
     solver.getPValues(p_values);
@@ -53,10 +51,9 @@ int main() {
     std::ofstream p_file;
     p_file.open("CppPValues.float.dat", std::ios::binary);
     for (int i = 0; i < num_x_bins * num_y_bins; i++) {
-        u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(double));
-        v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(double));
-        p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(double));
-        // std::cout << "Values: " << u_values[i] << " :: " << v_values[i] << " :: " << p_values[i] << std::endl;
+        u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(float));
+        v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
+        p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
     }
 
     // clean up
@@ -66,12 +63,10 @@ int main() {
     free(u_values);
     free(v_values);
     free(p_values);
-    return 0;
-
 
     // run time trials for the solver
     int num_time_trials = 5000;
-    float* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
+    auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
     float compute_time_ms = 0.;
     for (int i = 0; i < num_time_trials; i++) {
         auto start = std::chrono::high_resolution_clock::now();

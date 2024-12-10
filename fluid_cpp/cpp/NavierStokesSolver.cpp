@@ -90,18 +90,15 @@ void NavierStokesSolver<T>::solve() {
 
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
+            // compute the Poisson step, enforce BCs, and enforce the pressure
             this->computePoissonStepApproximation();
-
             this->enforcePressureBoundaryConditions();
             this->updatePressure();
         }
 
-        // get the pressure central difference, and set the u and v values
+        // get the pressure central difference, correct the u and v values, and enforce BCs
         this->computePressureCentralDifference();
-
-        // get the pressure central difference, and set the u and v values
         this->correctVelocityEstimates();
-
         this->enforceVelocityBoundaryConditions();
     }
 }
