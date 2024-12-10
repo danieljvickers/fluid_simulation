@@ -78,7 +78,7 @@ template <class T>
 void NavierStokesSolver<T>::solve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
-        // loop over every cell in the space
+        // compute useful derivatives
         this->computeCentralDifference();
         this->computeLaplacian();
         this->computeTimeDerivitive();
@@ -90,28 +90,17 @@ void NavierStokesSolver<T>::solve() {
 
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
-            for (int x = 1; x < this->box_dimension_x - 1; x++) {
-                for (int y = 1; y < this->box_dimension_y - 1; y++) {
-                    this->computePoissonStepApproximation(x, y);
-                }
-            }
+            this->computePoissonStepApproximation();
+
             this->enforcePressureBoundaryConditions();
             this->updatePressure();
         }
 
         // get the pressure central difference, and set the u and v values
-        for (int x = 1; x < this->box_dimension_x - 1; x++) {
-            for (int y = 1; y < this->box_dimension_y - 1; y++) {
-                this->computePressureCentralDifference(x, y);
-            }
-        }
+        this->computePressureCentralDifference();
 
         // get the pressure central difference, and set the u and v values
-        for (int x = 1; x < this->box_dimension_x - 1; x++) {
-            for (int y = 1; y < this->box_dimension_y - 1; y++) {
-                this->correctVelocityEstimates(x, y);
-            }
-        }
+        this->correctVelocityEstimates();
 
         this->enforceVelocityBoundaryConditions();
     }
@@ -224,16 +213,22 @@ void NavierStokesSolver<T>::computeRightHandSide() {
 }
 
 template <class T>
-void NavierStokesSolver<T>::computePoissonStepApproximation(int const index_x, int const index_y) {
-    int index = getCellIndex(index_x, index_y);
-    int left_index = getCellIndex(index_x - 1, index_y);
-    int right_index = getCellIndex(index_x + 1, index_y);
-    int up_index = getCellIndex(index_x, index_y + 1);
-    int down_index = getCellIndex(index_x, index_y - 1);
+void NavierStokesSolver<T>::computePoissonStepApproximation() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            //  get the indeices of neightboring cells
+            int index = getCellIndex(x, y);
+            int left_index = getCellIndex(x - 1, y);
+            int right_index = getCellIndex(x + 1, y);
+            int up_index = getCellIndex(x, y + 1);
+            int down_index = getCellIndex(x, y - 1);
 
-    cells[index].p_next = cells[index].right_hand_size * element_length_x * element_length_y;
-    cells[index].p_next -= cells[left_index].p + cells[right_index].p + cells[up_index].p + cells[down_index].p;
-    cells[index].p_next *= -0.25;
+            // compute the Poisson step
+            cells[index].p_next = cells[index].right_hand_size * element_length_x * element_length_y;
+            cells[index].p_next -= cells[left_index].p + cells[right_index].p + cells[up_index].p + cells[down_index].p;
+            cells[index].p_next *= -0.25;
+        }
+    }
 }
 
 template <class T>
@@ -288,27 +283,32 @@ void NavierStokesSolver<T>::updatePressure() {
 }
 
 template <class T>
-void NavierStokesSolver<T>::computePressureCentralDifference(int const index_x, int const index_y) {
-    //  get the indeices of neightboring cells
-    int cell_index = getCellIndex(index_x, index_y);
-    int left_index = getCellIndex(index_x - 1, index_y);
-    int right_index = getCellIndex(index_x + 1, index_y);
-    int up_index = getCellIndex(index_x, index_y + 1);
-    int down_index = getCellIndex(index_x, index_y - 1);
+void NavierStokesSolver<T>::computePressureCentralDifference() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            //  get the indeices of neightboring cells
+            int index = getCellIndex(x, y);
+            int left_index = getCellIndex(x - 1, y);
+            int right_index = getCellIndex(x + 1, y);
+            int up_index = getCellIndex(x, y + 1);
+            int down_index = getCellIndex(x, y - 1);
 
-    // compute the central differences
-    cells[cell_index].dp_dx = (cells[right_index].p - cells[left_index].p) / 2. / element_length_x;
-    cells[cell_index].dp_dy = (cells[up_index].p - cells[down_index].p) / 2. / element_length_y;
+            // compute the central differences
+            cells[index].dp_dx = (cells[right_index].p - cells[left_index].p) / 2. / element_length_x;
+            cells[index].dp_dy = (cells[up_index].p - cells[down_index].p) / 2. / element_length_y;
+        }
+    }
 }
 
 template <class T>
-void NavierStokesSolver<T>::correctVelocityEstimates(int const index_x, int const index_y) {
-    //  get the indeices of neightboring cells
-    int index = getCellIndex(index_x, index_y);
-
-    // get the time derivitives
-    cells[index].u = cells[index].u_next - (time_step / density) * cells[index].dp_dx;
-    cells[index].v = cells[index].v_next - (time_step / density) * cells[index].dp_dy;
+void NavierStokesSolver<T>::correctVelocityEstimates() {
+    for (int x = 0; x < box_dimension_x; x++) {
+        for (int y = 0; y < box_dimension_y; y++) {
+            int index = getCellIndex(x, y);
+            cells[index].u = cells[index].u_next - (time_step / density) * cells[index].dp_dx;
+            cells[index].v = cells[index].v_next - (time_step / density) * cells[index].dp_dy;
+        }
+    }
 }
 
 template <class T>

@@ -62,11 +62,11 @@ private:
     void takeTimeStep();
     void computeNextCentralDifference();
     void computeRightHandSide();
-    void computePoissonStepApproximation(int index_x, int index_y);
+    void computePoissonStepApproximation();
     void enforcePressureBoundaryConditions();
     void updatePressure();
-    void computePressureCentralDifference(int index_x, int index_y);
-    void correctVelocityEstimates(int index_x, int index_y);
+    void computePressureCentralDifference();
+    void correctVelocityEstimates();
     void enforceVelocityBoundaryConditions();
 
 public:
