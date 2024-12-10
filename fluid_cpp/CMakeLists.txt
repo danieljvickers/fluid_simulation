@@ -11,7 +11,6 @@ add_library(fluid_cpp SHARED
         cpp/NavierStokesCell.h
         cpp/SerialNavierStokes.cpp
         cpp/SerialNavierStokes.h
-        cpp/SerialNavierStokes.h
 )
 
 add_library(fluid_cuda SHARED

@@ -23,6 +23,7 @@ int main() {
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
 
+    std::cout << "Hello World" << std::endl;
     /*
 
     // establish boundary conditions

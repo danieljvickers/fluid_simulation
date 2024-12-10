@@ -9,20 +9,20 @@
 #include "../cpp/NavierStokesSolver.h"
 
 
-tamplate <class T>
-class ParrallelNavierStokes : public NavierStokesSolver {
+template <class T>
+class ParallelNavierStokes : public NavierStokesSolver<T> {
 private:
     NavierStokesCell<T>* d_cells;
 
 public:
-    ParrallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
-    ~ParrallelNavierStokes();
+    ParallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
+    ~ParallelNavierStokes();
 
     void solve();
 };
 
 // explicit instantiation allows float and double precision types
-template class NavierStokesSolver<float>;
-template class NavierStokesSolver<double>;
+template class ParallelNavierStokes<float>;
+template class ParallelNavierStokes<double>;
 
 #endif //PARRALLELNAVIERSTOKES_CUH
