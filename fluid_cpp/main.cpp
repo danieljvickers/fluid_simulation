@@ -10,12 +10,14 @@ int main() {
     float width = 1.0;
     float height = 1.0;
 
-    NavierStokesSolver<float> solver(num_x_bins, num_y_bins, width, height);
+
+
+    NavierStokesSolver<double> solver(num_x_bins, num_y_bins, width, height);
 
     solver.density = 1.0;
     solver.kinematic_viscosity = 0.1;
-    solver.num_iterations = 1000;
-    solver.num_poisson_iterations = 50;
+    solver.num_iterations = 600; // 1000;
+    solver.num_poisson_iterations = 15;
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
 
@@ -27,7 +29,7 @@ int main() {
         solver.setVBoundaryCondition(x, num_y_bins - 1, 0.);  // no flow into the top
         solver.setPBoundaryCondition(x, num_y_bins - 1, 0.);  // no pressure at the top
     }
-    for (int y = 0; y < num_y_bins; y++) {
+    for (int y = 1; y < num_y_bins - 1; y++) {
         solver.setUBoundaryCondition(0, y, 0.);  // no flow into of the left wall
         solver.setVBoundaryCondition(0, y, 0.);  // no flow inside the left wall
         solver.setUBoundaryCondition(num_x_bins - 1, y, 0.);  // no floow into the right wall
@@ -36,9 +38,9 @@ int main() {
 
     // Solve and retrieve the solution
     solver.solve();
-    float* u_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
-    float* v_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
-    float* p_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
+    double* u_values = static_cast<double*>(malloc(sizeof(double) * num_x_bins * num_y_bins));
+    double* v_values = static_cast<double*>(malloc(sizeof(double) * num_x_bins * num_y_bins));
+    double* p_values = static_cast<double*>(malloc(sizeof(double) * num_x_bins * num_y_bins));
     solver.getUValues(u_values);
     solver.getVValues(v_values);
     solver.getPValues(p_values);
@@ -51,9 +53,9 @@ int main() {
     std::ofstream p_file;
     p_file.open("CppPValues.float.dat", std::ios::binary);
     for (int i = 0; i < num_x_bins * num_y_bins; i++) {
-        u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(float));
-        v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
-        p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
+        u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(double));
+        v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(double));
+        p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(double));
         // std::cout << "Values: " << u_values[i] << " :: " << v_values[i] << " :: " << p_values[i] << std::endl;
     }
 

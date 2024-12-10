@@ -88,9 +88,20 @@ void NavierStokesSolver<T>::solve() {
 
                 // take a tenative step forward in time
                 this->takeTimeStep(x, y);
+            }
+        }
+
+        for (int x = 1; x < this->box_dimension_x - 1; x++) {
+            for (int y = 1; y < this->box_dimension_y - 1; y++) {
                 this->computeNextCentralDifference(x, y); // recompute the central difference
                 this->computeRightHandSide(x, y);
             }
+        }
+
+        std::cout << "dv_dt == " << cells[getCellIndex(1, 16)].dv_dt << std::endl;
+        if (cells[getCellIndex(1, 16)].dv_dt != cells[getCellIndex(1, 16)].dv_dt) {
+            std::cout << "Stopping at Itteration :: " << i << std::endl;
+            return;
         }
 
         // take a series of poisson steps to approximate the pressure in each cell
@@ -108,6 +119,12 @@ void NavierStokesSolver<T>::solve() {
         for (int x = 1; x < this->box_dimension_x - 1; x++) {
             for (int y = 1; y < this->box_dimension_y - 1; y++) {
                 this->computePressureCentralDifference(x, y);
+            }
+        }
+
+        // get the pressure central difference, and set the u and v values
+        for (int x = 1; x < this->box_dimension_x - 1; x++) {
+            for (int y = 1; y < this->box_dimension_y - 1; y++) {
                 this->correctVelocityEstimates(x, y);
             }
         }
@@ -188,7 +205,6 @@ void NavierStokesSolver<T>::computeNextCentralDifference(int const index_x, int 
     // compute the central differences
     cells[index].du_next_dx = (cells[right_index].u_next - cells[left_index].u_next) / 2. / element_length_x;
     cells[index].dv_next_dy = (cells[up_index].v_next - cells[down_index].v_next) / 2. / element_length_y;
-
 }
 
 template <class T>
@@ -253,8 +269,8 @@ void NavierStokesSolver<T>::enforcePressureBoundaryConditions() {
 
 template <class T>
 void NavierStokesSolver<T>::updatePressure() {
-    for (int x = 1; x < box_dimension_x - 1; x++) {
-        for (int y = 1; y < box_dimension_y - 1; y++) {
+    for (int x = 0; x < box_dimension_x; x++) {
+        for (int y = 0; y < box_dimension_y; y++) {
             int index = getCellIndex(x, y);
             cells[index].p = cells[index].p_next;
         }
