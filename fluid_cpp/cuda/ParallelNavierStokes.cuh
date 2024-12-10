@@ -5,61 +5,20 @@
 #ifndef PARRALLELNAVIERSTOKES_CUH
 #define PARRALLELNAVIERSTOKES_CUH
 
-#include "NavierStokesCell.h"
+#include "../cpp/NavierStokesCell.h"
+#include "../cpp/NavierStokesSolver.h"
 
 
 tamplate <class T>
-class ParrallelNavierStokes {
+class ParrallelNavierStokes : public NavierStokesSolver {
 private:
-    int box_dimension_x;
-    int box_dimension_y;
-    T domain_size_x;
-    T domain_size_y;
-    T element_length_x;
-    T element_length_y;
-
-    NavierStokesCell<T>* cells;
-
-    void computeCentralDifference();
-    void computeLaplacian();
-    void computeTimeDerivitive();
-    void takeTimeStep();
-    void computeNextCentralDifference();
-    void computeRightHandSide();
-    void computePoissonStepApproximation();
-    void enforcePressureBoundaryConditions();
-    void updatePressure();
-    void computePressureCentralDifference();
-    void correctVelocityEstimates();
-    void enforceVelocityBoundaryConditions();
+    NavierStokesCell<T>* d_cells;
 
 public:
-    T time_step = 0.001;
-    T kinematic_viscosity = 0.1;
-    T density = 1.0;
-    int num_poisson_iterations = 50;
-    int num_iterations = 1000;
-    T stability_safety_factor = 0.5;
-};
-
-template <class T = float> class NavierStokesSolver {
-
-
-
-    NavierStokesSolver(int box_dimension_x, int box_dimension_y, T domain_size_x, T domain_size_y);
-    ~NavierStokesSolver();
-    int setBoxDimenension(int x_dim, int y_dim);
-    int setDomainSize(T domain_size_x, T domain_size_y);
-    int setUBoundaryCondition(int x_index, int y_index, T BC);
-    int setVBoundaryCondition(int x_index, int y_index, T BC);
-    int setPBoundaryCondition(int x_index, int y_index, T BC);
+    ParrallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
+    ~ParrallelNavierStokes();
 
     void solve();
-    int getCellIndex(int x_index, int y_index);
-
-    int getUValues(T* output);
-    int getVValues(T* output);
-    int getPValues(T* output);
 };
 
 // explicit instantiation allows float and double precision types

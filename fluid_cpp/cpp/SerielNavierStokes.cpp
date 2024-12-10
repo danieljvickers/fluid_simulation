@@ -3,10 +3,12 @@
 //
 
 #include "SerielNavierStokes.h"
+#include "NavierStokesCell.h"
 
 template <class T>
 SerielNavierStokes<T>::SerielNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
     : NavierStokesSolver<T>(box_dim_x, box_dim_y, domain_size_x, domain_size_y) {
+
 }
 
 template <class T>

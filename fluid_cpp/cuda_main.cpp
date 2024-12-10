@@ -5,7 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <fstream>
-#include "cpp/NavierStokesSolver.h"
+#include "cuda/ParallelNavierStokes.cuh"
 
 int main() {
     // set up the solver
@@ -13,7 +13,7 @@ int main() {
     int num_y_bins = 41;
     float width = 1.0;
     float height = 1.0;
-    NavierStokesSolver<float> solver(num_x_bins, num_y_bins, width, height);
+    ParallelNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
 
     // entire specific constants of the simulation
     solver.density = 1.0;
@@ -22,6 +22,8 @@ int main() {
     solver.num_poisson_iterations = 50;
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
+
+    /*
 
     // establish boundary conditions
     for (int x = 0; x < num_x_bins; x++) {
@@ -45,4 +47,5 @@ int main() {
     auto* p_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
     solver.getUValues(u_values);
     solver.getVValues(v_values);
-    solver.getPValues(p_values);
+    solver.getPValues(p_values);*/
+}
