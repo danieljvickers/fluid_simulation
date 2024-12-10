@@ -2,10 +2,27 @@ cmake_minimum_required(VERSION 3.28)
 project(fluid_cpp)
 
 set(CMAKE_CXX_STANDARD 17)
+find_package(CUDAToolkit)
+enable_language(CUDA)
 
 add_library(fluid_cpp SHARED
         cpp/NavierStokesSolver.cpp
-        cpp/NavierStokesSolver.h)
+        cpp/NavierStokesSolver.h
+        cpp/NavierStokesCell.h
+        cpp/SerielNavierStokes.cpp
+        cpp/SerielNavierStokes.h
+        cpp/SerielNavierStokes.h
+)
+
+add_library(fluid_cuda SHARED
+        cpp/NavierStokesCell.h
+        cuda/ParallelNavierStokes.cu
+        cuda/ParallelNavierStokes.cuh
+)
 
 add_executable(main main.cpp)
 target_link_libraries(main fluid_cpp)
+
+add_executable(cuda_main cuda_main.cpp
+        cuda_main.cpp)
+target_link_libraries(cuda_main fluid_cpp fluid_cuda)

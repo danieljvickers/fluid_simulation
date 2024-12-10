@@ -1,14 +1,16 @@
 //
-// Created by Daniel J. Vickers on 11/12/24.
+// Created by dan on 12/10/24.
 //
 
-#ifndef NAVIERSTOKESSOLVER_H
-#define NAVIERSTOKESSOLVER_H
+#ifndef PARRALLELNAVIERSTOKES_CUH
+#define PARRALLELNAVIERSTOKES_CUH
+
 #include "NavierStokesCell.h"
 
-template <class T = float>
-class NavierStokesSolver {
-protected:
+
+tamplate <class T>
+class ParrallelNavierStokes {
+private:
     int box_dimension_x;
     int box_dimension_y;
     T domain_size_x;
@@ -18,6 +20,19 @@ protected:
 
     NavierStokesCell<T>* cells;
 
+    void computeCentralDifference();
+    void computeLaplacian();
+    void computeTimeDerivitive();
+    void takeTimeStep();
+    void computeNextCentralDifference();
+    void computeRightHandSide();
+    void computePoissonStepApproximation();
+    void enforcePressureBoundaryConditions();
+    void updatePressure();
+    void computePressureCentralDifference();
+    void correctVelocityEstimates();
+    void enforceVelocityBoundaryConditions();
+
 public:
     T time_step = 0.001;
     T kinematic_viscosity = 0.1;
@@ -25,6 +40,11 @@ public:
     int num_poisson_iterations = 50;
     int num_iterations = 1000;
     T stability_safety_factor = 0.5;
+};
+
+template <class T = float> class NavierStokesSolver {
+
+
 
     NavierStokesSolver(int box_dimension_x, int box_dimension_y, T domain_size_x, T domain_size_y);
     ~NavierStokesSolver();
@@ -34,6 +54,7 @@ public:
     int setVBoundaryCondition(int x_index, int y_index, T BC);
     int setPBoundaryCondition(int x_index, int y_index, T BC);
 
+    void solve();
     int getCellIndex(int x_index, int y_index);
 
     int getUValues(T* output);
@@ -45,4 +66,4 @@ public:
 template class NavierStokesSolver<float>;
 template class NavierStokesSolver<double>;
 
-#endif //NAVIERSTOKESSOLVER_H
+#endif //PARRALLELNAVIERSTOKES_CUH
