@@ -56,10 +56,10 @@ private:
 
     NavierStokesCell<T>* cells;
 
-    void computeCentralDifference(int index_x, int index_y);
-    void computeLaplacian(int index_x, int index_y);
-    void computeTimeDerivitive(int index_x, int index_y);
-    void takeTimeStep(int index_x, int index_y);
+    void computeCentralDifference();
+    void computeLaplacian();
+    void computeTimeDerivitive();
+    void takeTimeStep();
     void computeNextCentralDifference(int index_x, int index_y);
     void computeRightHandSide(int index_x, int index_y);
     void computePoissonStepApproximation(int index_x, int index_y);

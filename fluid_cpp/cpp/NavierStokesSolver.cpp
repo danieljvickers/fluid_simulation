@@ -79,29 +79,18 @@ void NavierStokesSolver<T>::solve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
         // loop over every cell in the space
-        for (int x = 1; x < this->box_dimension_x - 1; x++) {
-            for (int y = 1; y < this->box_dimension_y - 1; y++) {
-                // compute the initial derivates for u and v
-                this->computeCentralDifference(x, y);
-                this->computeLaplacian(x, y);
-                this->computeTimeDerivitive(x, y);
+        this->computeCentralDifference();
+        this->computeLaplacian();
+        this->computeTimeDerivitive();
 
-                // take a tenative step forward in time
-                this->takeTimeStep(x, y);
-            }
-        }
+        // take a tenative step forward in time
+        this->takeTimeStep();
 
         for (int x = 1; x < this->box_dimension_x - 1; x++) {
             for (int y = 1; y < this->box_dimension_y - 1; y++) {
                 this->computeNextCentralDifference(x, y); // recompute the central difference
                 this->computeRightHandSide(x, y);
             }
-        }
-
-        std::cout << "dv_dt == " << cells[getCellIndex(1, 16)].dv_dt << std::endl;
-        if (cells[getCellIndex(1, 16)].dv_dt != cells[getCellIndex(1, 16)].dv_dt) {
-            std::cout << "Stopping at Itteration :: " << i << std::endl;
-            return;
         }
 
         // take a series of poisson steps to approximate the pressure in each cell
@@ -142,55 +131,73 @@ int NavierStokesSolver<T>::getCellIndex(int const x_index, int const y_index) {
 }
 
 template <class T>
-void NavierStokesSolver<T>::computeCentralDifference(int const index_x, int const index_y) {
-    //  get the indeices of neightboring cells
-    int cell_index = getCellIndex(index_x, index_y);
-    int left_index = getCellIndex(index_x - 1, index_y);
-    int right_index = getCellIndex(index_x + 1, index_y);
-    int up_index = getCellIndex(index_x, index_y + 1);
-    int down_index = getCellIndex(index_x, index_y - 1);
+void NavierStokesSolver<T>::computeCentralDifference() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            //  get the indeices of neightboring cells
+            int index = getCellIndex(x, y);
+            int left_index = getCellIndex(x - 1, y);
+            int right_index = getCellIndex(x + 1, y);
+            int up_index = getCellIndex(x, y + 1);
+            int down_index = getCellIndex(x, y - 1);
 
-    // compute the central differences
-    cells[cell_index].du_dx = (cells[right_index].u - cells[left_index].u) / 2. / element_length_x;
-    cells[cell_index].dv_dx = (cells[right_index].v - cells[left_index].v) / 2. / element_length_x;
-    cells[cell_index].du_dy = (cells[up_index].u - cells[down_index].u) / 2. / element_length_y;
-    cells[cell_index].dv_dy = (cells[up_index].v - cells[down_index].v) / 2. / element_length_y;
+            // compute the central differences
+            cells[index].du_dx = (cells[right_index].u - cells[left_index].u) / 2. / element_length_x;
+            cells[index].dv_dx = (cells[right_index].v - cells[left_index].v) / 2. / element_length_x;
+            cells[index].du_dy = (cells[up_index].u - cells[down_index].u) / 2. / element_length_y;
+            cells[index].dv_dy = (cells[up_index].v - cells[down_index].v) / 2. / element_length_y;
+        }
+    }
+
 }
 
 template <class T>
-void NavierStokesSolver<T>::computeLaplacian(int const index_x, int const index_y) {
-    //  get the indeices of neightboring cells
-    int index = getCellIndex(index_x, index_y);
-    int left_index = getCellIndex(index_x - 1, index_y);
-    int right_index = getCellIndex(index_x + 1, index_y);
-    int up_index = getCellIndex(index_x, index_y + 1);
-    int down_index = getCellIndex(index_x, index_y - 1);
+void NavierStokesSolver<T>::computeLaplacian() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            //  get the indeices of neightboring cells
+            int index = getCellIndex(x, y);
+            int left_index = getCellIndex(x - 1, y);
+            int right_index = getCellIndex(x + 1, y);
+            int up_index = getCellIndex(x, y + 1);
+            int down_index = getCellIndex(x, y - 1);
 
-    // compute the laplacian
-    cells[index].u_laplacian = cells[left_index].u + cells[right_index].u + cells[up_index].u + cells[down_index].u;
-    cells[index].u_laplacian = (cells[index].u_laplacian - 4. * cells[index].u) / element_length_x / element_length_y;
-    cells[index].v_laplacian = cells[left_index].v + cells[right_index].v + cells[up_index].v + cells[down_index].v;
-    cells[index].v_laplacian = (cells[index].v_laplacian - 4. * cells[index].v) / element_length_x / element_length_y;
+            // compute the laplacian
+            cells[index].u_laplacian = cells[left_index].u + cells[right_index].u + cells[up_index].u + cells[down_index].u;
+            cells[index].u_laplacian = (cells[index].u_laplacian - 4. * cells[index].u) / element_length_x / element_length_y;
+            cells[index].v_laplacian = cells[left_index].v + cells[right_index].v + cells[up_index].v + cells[down_index].v;
+            cells[index].v_laplacian = (cells[index].v_laplacian - 4. * cells[index].v) / element_length_x / element_length_y;
+        }
+    }
 }
 
 template <class T>
-void NavierStokesSolver<T>::computeTimeDerivitive(int const index_x, int const index_y) {
-    //  get the indeices of neightboring cells
-    int index = getCellIndex(index_x, index_y);
+void NavierStokesSolver<T>::computeTimeDerivitive() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            //  get the indeix in the array of cells
+            int index = getCellIndex(x, y);
 
-    // get the time derivitives
-    cells[index].du_dt = kinematic_viscosity * cells[index].u_laplacian - cells[index].u * cells[index].du_dx - cells[index].v * cells[index].du_dy;
-    cells[index].dv_dt = kinematic_viscosity * cells[index].v_laplacian - cells[index].u * cells[index].dv_dx - cells[index].v * cells[index].dv_dy;
+            // get the time derivitives
+            cells[index].du_dt = kinematic_viscosity * cells[index].u_laplacian - cells[index].u * cells[index].du_dx - cells[index].v * cells[index].du_dy;
+            cells[index].dv_dt = kinematic_viscosity * cells[index].v_laplacian - cells[index].u * cells[index].dv_dx - cells[index].v * cells[index].dv_dy;
+        }
+    }
 }
 
-template <class T>
-void NavierStokesSolver<T>::takeTimeStep(int const index_x, int const index_y) {
-    //  get the indeices of neightboring cells
-    int index = getCellIndex(index_x, index_y);
 
-    // get the time derivitives
-    cells[index].u_next = cells[index].u + time_step * cells[index].du_dt;
-    cells[index].v_next = cells[index].v + time_step * cells[index].dv_dt;
+template <class T>
+void NavierStokesSolver<T>::takeTimeStep() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            //  get the indeix in the array of cells
+            int index = getCellIndex(x, y);
+
+            // step forward in time
+            cells[index].u_next = cells[index].u + time_step * cells[index].du_dt;
+            cells[index].v_next = cells[index].v + time_step * cells[index].dv_dt;
+        }
+    }
 }
 
 template <class T>
