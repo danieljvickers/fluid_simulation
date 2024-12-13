@@ -2,8 +2,8 @@
 // Created by dan on 12/10/24.
 //
 
-#ifndef PARRALLELNAVIERSTOKES_CUH
-#define PARRALLELNAVIERSTOKES_CUH
+#ifndef PARALLELNAVIERSTOKES_CUH
+#define PARALLELNAVIERSTOKES_CUH
 
 #include "../cpp/NavierStokesCell.h"
 #include "../cpp/NavierStokesSolver.h"
@@ -25,4 +25,4 @@ public:
 template class ParallelNavierStokes<float>;
 template class ParallelNavierStokes<double>;
 
-#endif //PARRALLELNAVIERSTOKES_CUH
+#endif //PARALLELNAVIERSTOKES_CUH
