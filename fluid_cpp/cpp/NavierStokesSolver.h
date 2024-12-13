@@ -16,7 +16,7 @@ protected:
     T element_length_x;
     T element_length_y;
 
-    NavierStokesCell<T>* cells;
+    NavierStokesCell<T>** cells;
 
 public:
     T time_step = 0.001;

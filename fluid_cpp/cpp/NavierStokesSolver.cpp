@@ -11,13 +11,19 @@ template <class T>
 NavierStokesSolver<T>::NavierStokesSolver(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y) {
     box_dimension_x = box_dim_x;
     box_dimension_y = box_dim_y;
-    this->cells = static_cast<NavierStokesCell<T>*>(malloc(sizeof(NavierStokesCell<T>) * box_dimension_x * box_dimension_y));
+    this->cells = static_cast<NavierStokesCell<T>**>(malloc(sizeof(NavierStokesCell<T>*) * box_dim_x));
+    for (int x = 0; x < box_dim_x; x++) {
+        this->cells[x] = static_cast<NavierStokesCell<T>>(malloc(sizeof(NavierStokesCell<T>) * box_dim_y));
+    }
 
     this->setDomainSize(domain_size_x, domain_size_x);
 }
 
 template <class T>
 NavierStokesSolver<T>::~NavierStokesSolver() {
+    for (int x = 0; x < this->box_dimension_x; x++) {
+        free(cells[x]);
+    }
     free(this->cells);
 }
 
