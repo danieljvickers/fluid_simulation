@@ -50,18 +50,11 @@ template <class T>
 void SerialNavierStokes<T>::computeCentralDifference() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeices of neightboring cells
-            int index = this->getCellIndex(x, y);
-            int left_index = this->getCellIndex(x - 1, y);
-            int right_index = this->getCellIndex(x + 1, y);
-            int up_index = this->getCellIndex(x, y + 1);
-            int down_index = this->getCellIndex(x, y - 1);
-
             // compute the central differences
-            this->cells[index].du_dx = (this->cells[right_index].u - this->cells[left_index].u) / 2. / this->element_length_x;
-            this->cells[index].dv_dx = (this->cells[right_index].v - this->cells[left_index].v) / 2. / this->element_length_x;
-            this->cells[index].du_dy = (this->cells[up_index].u - this->cells[down_index].u) / 2. / this->element_length_y;
-            this->cells[index].dv_dy = (this->cells[up_index].v - this->cells[down_index].v) / 2. / this->element_length_y;
+            this->cells[x][y].du_dx = (this->cells[x+1][y].u - this->cells[x-1][y].u) / 2. / this->element_length_x;
+            this->cells[x][y].dv_dx = (this->cells[x+1][y].v - this->cells[x-1][y].v) / 2. / this->element_length_x;
+            this->cells[x][y].du_dy = (this->cells[x][y+1].u - this->cells[x][y-1].u) / 2. / this->element_length_y;
+            this->cells[x][y].dv_dy = (this->cells[x][y+1].v - this->cells[x][y-1].v) / 2. / this->element_length_y;
         }
     }
 
@@ -71,18 +64,11 @@ template <class T>
 void SerialNavierStokes<T>::computeLaplacian() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeices of neightboring cells
-            int index = this->getCellIndex(x, y);
-            int left_index = this->getCellIndex(x - 1, y);
-            int right_index = this->getCellIndex(x + 1, y);
-            int up_index = this->getCellIndex(x, y + 1);
-            int down_index = this->getCellIndex(x, y - 1);
-
             // compute the laplacian
-            this->cells[index].u_laplacian = this->cells[left_index].u + this->cells[right_index].u + this->cells[up_index].u + this->cells[down_index].u;
-            this->cells[index].u_laplacian = (this->cells[index].u_laplacian - 4. * this->cells[index].u) / this->element_length_x / this->element_length_y;
-            this->cells[index].v_laplacian = this->cells[left_index].v + this->cells[right_index].v + this->cells[up_index].v + this->cells[down_index].v;
-            this->cells[index].v_laplacian = (this->cells[index].v_laplacian - 4. * this->cells[index].v) / this->element_length_x / this->element_length_y;
+            this->cells[x][y].u_laplacian = this->cells[x-1][y].u + this->cells[x+1][y].u + this->cells[x][y+1].u + this->cells[x][y-1].u;
+            this->cells[x][y].u_laplacian = (this->cells[x][y].u_laplacian - 4. * this->cells[x][y].u) / this->element_length_x / this->element_length_y;
+            this->cells[x][y].v_laplacian = this->cells[x-1][y].v + this->cells[x+1][y].v + this->cells[x][y+1].v + this->cells[x][y-1].v;
+            this->cells[x][y].v_laplacian = (this->cells[x][y].v_laplacian - 4. * this->cells[x][y].v) / this->element_length_x / this->element_length_y;
         }
     }
 }
@@ -91,12 +77,9 @@ template <class T>
 void SerialNavierStokes<T>::computeTimeDerivitive() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeix in the array of cells
-            int index = this->getCellIndex(x, y);
-
             // get the time derivitives
-            this->cells[index].du_dt = this->kinematic_viscosity * this->cells[index].u_laplacian - this->cells[index].u * this->cells[index].du_dx - this->cells[index].v * this->cells[index].du_dy;
-            this->cells[index].dv_dt = this->kinematic_viscosity * this->cells[index].v_laplacian - this->cells[index].u * this->cells[index].dv_dx - this->cells[index].v * this->cells[index].dv_dy;
+            this->cells[x][y].du_dt = this->kinematic_viscosity * this->cells[x][y].u_laplacian - this->cells[x][y].u * this->cells[x][y].du_dx - this->cells[x][y].v * this->cells[x][y].du_dy;
+            this->cells[x][y].dv_dt = this->kinematic_viscosity * this->cells[x][y].v_laplacian - this->cells[x][y].u * this->cells[x][y].dv_dx - this->cells[x][y].v * this->cells[x][y].dv_dy;
         }
     }
 }
@@ -106,12 +89,9 @@ template <class T>
 void SerialNavierStokes<T>::takeTimeStep() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeix in the array of cells
-            int index = this->getCellIndex(x, y);
-
             // step forward in time
-            this->cells[index].u_next = this->cells[index].u + this->time_step * this->cells[index].du_dt;
-            this->cells[index].v_next = this->cells[index].v + this->time_step * this->cells[index].dv_dt;
+            this->cells[x][y].u_next = this->cells[x][y].u + this->time_step * this->cells[x][y].du_dt;
+            this->cells[x][y].v_next = this->cells[x][y].v + this->time_step * this->cells[x][y].dv_dt;
         }
     }
 }
@@ -120,16 +100,9 @@ template <class T>
 void SerialNavierStokes<T>::computeNextCentralDifference() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeices of neightboring cells
-            int index = this->getCellIndex(x, y);
-            int left_index = this->getCellIndex(x - 1, y);
-            int right_index = this->getCellIndex(x + 1, y);
-            int up_index = this->getCellIndex(x, y + 1);
-            int down_index = this->getCellIndex(x, y - 1);
-
             // compute the central differences
-            this->cells[index].du_next_dx = (this->cells[right_index].u_next - this->cells[left_index].u_next) / 2. / this->element_length_x;
-            this->cells[index].dv_next_dy = (this->cells[up_index].v_next - this->cells[down_index].v_next) / 2. / this->element_length_y;
+            this->cells[x][y].du_next_dx = (this->cells[x+1][y].u_next - this->cells[x-1][y].u_next) / 2. / this->element_length_x;
+            this->cells[x][y].dv_next_dy = (this->cells[x][y+1].v_next - this->cells[x][y-1].v_next) / 2. / this->element_length_y;
         }
     }
 }
@@ -138,8 +111,7 @@ template <class T>
 void SerialNavierStokes<T>::computeRightHandSide() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            int index = this->getCellIndex(x, y);
-            this->cells[index].right_hand_size = (this->density / this->time_step) * (this->cells[index].du_next_dx + this->cells[index].dv_next_dy);
+            this->cells[x][y].right_hand_size = (this->density / this->time_step) * (this->cells[x][y].du_next_dx + this->cells[x][y].dv_next_dy);
         }
     }
 }
@@ -148,17 +120,10 @@ template <class T>
 void SerialNavierStokes<T>::computePoissonStepApproximation() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeices of neightboring cells
-            int index = this->getCellIndex(x, y);
-            int left_index = this->getCellIndex(x - 1, y);
-            int right_index = this->getCellIndex(x + 1, y);
-            int up_index = this->getCellIndex(x, y + 1);
-            int down_index = this->getCellIndex(x, y - 1);
-
             // compute the Poisson step
-            this->cells[index].p_next = this->cells[index].right_hand_size * this->element_length_x * this->element_length_y;
-            this->cells[index].p_next -= this->cells[left_index].p + this->cells[right_index].p + this->cells[up_index].p + this->cells[down_index].p;
-            this->cells[index].p_next *= -0.25;
+            this->cells[x][y].p_next = this->cells[x][y].right_hand_size * this->element_length_x * this->element_length_y;
+            this->cells[x][y].p_next -= this->cells[x-1][y].p + this->cells[x+1][y].p + this->cells[x][y+1].p + this->cells[x][y-1].p;
+            this->cells[x][y].p_next *= -0.25;
         }
     }
 }
@@ -168,38 +133,37 @@ void SerialNavierStokes<T>::enforcePressureBoundaryConditions() {
     // check the interior for any BC
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            int index = this->getCellIndex(x, y);
-            if (this->cells[index].p_boundary_set) {
-                this->cells[index].p_next = this->cells[index].p_boundary;  // enforce the BC if it has been set
+            if (this->cells[x][y].p_boundary_set) {
+                this->cells[x][y].p_next = this->cells[x][y].p_boundary;  // enforce the BC if it has been set
             }
         }
     }
 
     // set the edges to be continuous with the interior
     for (int x = 0; x < this->box_dimension_x; x++) {
-        if (!this->cells[this->getCellIndex(x, 0)].p_boundary_set) {
-            this->cells[this->getCellIndex(x, 0)].p_next = this->cells[this->getCellIndex(x, 1)].p_next;
+        if (!this->cells[x][0].p_boundary_set) {
+            this->cells[x][0].p_next = this->cells[x][1].p_next;
         } else {
-            this->cells[this->getCellIndex(x, 0)].p_next = this->cells[this->getCellIndex(x, 0)].p_boundary;
+            this->cells[x][0].p_next = this->cells[x][0].p_boundary;
         }
 
-        if (!this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].p_boundary_set) {
-            this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].p_next = this->cells[this->getCellIndex(x, this->box_dimension_y - 2)].p_next;
+        if (!this->cells[x][this->box_dimension_y - 1].p_boundary_set) {
+            this->cells[x][this->box_dimension_y - 1].p_next = this->cells[x][this->box_dimension_y - 2].p_next;
         } else {
-            this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].p_next = this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].p_boundary;
+            this->cells[x][this->box_dimension_y - 1].p_next = this->cells[x][this->box_dimension_y - 1].p_boundary;
         }
     }
 
     for (int y = 1; y < this->box_dimension_y - 1; y++) {
-        if (!this->cells[this->getCellIndex(0, y)].p_boundary_set) {
-            this->cells[this->getCellIndex(0, y)].p_next = this->cells[this->getCellIndex(1, y)].p_next;
+        if (!this->cells[0][y].p_boundary_set) {
+            this->cells[0][y].p_next = this->cells[1][y].p_next;
         } else {
-            this->cells[this->getCellIndex(0, y)].p_next = this->cells[this->getCellIndex(0, y)].p_boundary;
+            this->cells[0][y].p_next = this->cells[0][y].p_boundary;
         }
-        if (!this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].p_boundary_set) {
-            this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].p_next = this->cells[this->getCellIndex(this->box_dimension_x - 2, y)].p_next;
+        if (!this->cells[this->box_dimension_x - 1][y].p_boundary_set) {
+            this->cells[this->box_dimension_x - 1][y].p_next = this->cells[this->box_dimension_x - 2][y].p_next;
         } else {
-            this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].p_next = this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].p_boundary;
+            this->cells[this->box_dimension_x - 1][y].p_next = this->cells[this->box_dimension_x - 1][y].p_boundary;
         }
     }
 }
@@ -208,8 +172,7 @@ template <class T>
 void SerialNavierStokes<T>::updatePressure() {
     for (int x = 0; x < this->box_dimension_x; x++) {
         for (int y = 0; y < this->box_dimension_y; y++) {
-            int index = this->getCellIndex(x, y);
-            this->cells[index].p = this->cells[index].p_next;
+            this->cells[x][y].p = this->cells[x][y].p_next;
         }
     }
 }
@@ -218,16 +181,9 @@ template <class T>
 void SerialNavierStokes<T>::computePressureCentralDifference() {
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            //  get the indeices of neightboring cells
-            int index = this->getCellIndex(x, y);
-            int left_index = this->getCellIndex(x - 1, y);
-            int right_index = this->getCellIndex(x + 1, y);
-            int up_index = this->getCellIndex(x, y + 1);
-            int down_index = this->getCellIndex(x, y - 1);
-
             // compute the central differences
-            this->cells[index].dp_dx = (this->cells[right_index].p - this->cells[left_index].p) / 2. / this->element_length_x;
-            this->cells[index].dp_dy = (this->cells[up_index].p - this->cells[down_index].p) / 2. / this->element_length_y;
+            this->cells[x][y].dp_dx = (this->cells[x+1][y].p - this->cells[x-1][y].p) / 2. / this->element_length_x;
+            this->cells[x][y].dp_dy = (this->cells[x][y+1].p - this->cells[x][y-1].p) / 2. / this->element_length_y;
         }
     }
 }
@@ -236,9 +192,8 @@ template <class T>
 void SerialNavierStokes<T>::correctVelocityEstimates() {
     for (int x = 0; x < this->box_dimension_x; x++) {
         for (int y = 0; y < this->box_dimension_y; y++) {
-            int index = this->getCellIndex(x, y);
-            this->cells[index].u = this->cells[index].u_next - (this->time_step / this->density) * this->cells[index].dp_dx;
-            this->cells[index].v = this->cells[index].v_next - (this->time_step / this->density) * this->cells[index].dp_dy;
+            this->cells[x][y].u = this->cells[x][y].u_next - (this->time_step / this->density) * this->cells[x][y].dp_dx;
+            this->cells[x][y].v = this->cells[x][y].v_next - (this->time_step / this->density) * this->cells[x][y].dp_dy;
         }
     }
 }
@@ -248,12 +203,11 @@ void SerialNavierStokes<T>::enforceVelocityBoundaryConditions() {
     // check the interior for any BC
     for (int x = 1; x < this->box_dimension_x - 1; x++) {
         for (int y = 1; y < this->box_dimension_y - 1; y++) {
-            int index = this->getCellIndex(x, y);
-            if (this->cells[index].u_boundary_set) {
-                this->cells[index].u = this->cells[index].u_boundary;  // enforce the BC if it has been set
+            if (this->cells[x][y].u_boundary_set) {
+                this->cells[x][y].u = this->cells[x][y].u_boundary;  // enforce the BC if it has been set
             }
-            if (this->cells[index].v_boundary_set) {
-                this->cells[index].v = this->cells[index].v_boundary;  // enforce the BC if it has been set
+            if (this->cells[x][y].v_boundary_set) {
+                this->cells[x][y].v = this->cells[x][y].v_boundary;  // enforce the BC if it has been set
             }
         }
     }
@@ -261,61 +215,61 @@ void SerialNavierStokes<T>::enforceVelocityBoundaryConditions() {
     // set the edges to be continuous with the interior
     for (int x = 0; x < this->box_dimension_x; x++) {
         // check u bottom
-        if (!this->cells[this->getCellIndex(x, 0)].u_boundary_set) {
-            this->cells[this->getCellIndex(x, 0)].u = this->cells[this->getCellIndex(x, 1)].u;
+        if (!this->cells[x][0].u_boundary_set) {
+            this->cells[x][0].u = this->cells[x][1].u;
         } else {
-            this->cells[this->getCellIndex(x, 0)].u = this->cells[this->getCellIndex(x, 0)].u_boundary;
+            this->cells[x][0].u = this->cells[x][0].u_boundary;
         }
 
         // check u top
-        if (!this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].u_boundary_set) {
-            this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].u = this->cells[this->getCellIndex(x, this->box_dimension_y - 2)].u_next;
+        if (!this->cells[x][this->box_dimension_y - 1].u_boundary_set) {
+            this->cells[x][this->box_dimension_y - 1].u = this->cells[x][this->box_dimension_y - 2].u_next;
         } else {
-            this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].u = this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].u_boundary;
+            this->cells[x][this->box_dimension_y - 1].u = this->cells[x][this->box_dimension_y - 1].u_boundary;
         }
 
         // check v bottom
-        if (!this->cells[this->getCellIndex(x, 0)].v_boundary_set) {
-            this->cells[this->getCellIndex(x, 0)].v = this->cells[this->getCellIndex(x, 1)].v;
+        if (!this->cells[x][0].v_boundary_set) {
+            this->cells[x][0].v = this->cells[x][1].v;
         } else {
-            this->cells[this->getCellIndex(x, 0)].v = this->cells[this->getCellIndex(x, 0)].v_boundary;
+            this->cells[x][0].v = this->cells[x][0].v_boundary;
         }
 
         // check v top
-        if (!this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].v_boundary_set) {
-            this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].v = this->cells[this->getCellIndex(x, this->box_dimension_y - 2)].v_next;
+        if (!this->cells[x][this->box_dimension_y - 1].v_boundary_set) {
+            this->cells[x][this->box_dimension_y - 1].v = this->cells[x][this->box_dimension_y - 2].v_next;
         } else {
-            this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].v = this->cells[this->getCellIndex(x, this->box_dimension_y - 1)].v_boundary;
+            this->cells[x][this->box_dimension_y - 1].v = this->cells[x][this->box_dimension_y - 1].v_boundary;
         }
     }
 
     for (int y = 1; y < this->box_dimension_y - 1; y++) {
         // check u left
-        if (!this->cells[this->getCellIndex(0, y)].u_boundary_set) {
-            this->cells[this->getCellIndex(0, y)].u = this->cells[this->getCellIndex(1, y)].u_next;
+        if (!this->cells[0][y].u_boundary_set) {
+            this->cells[0][y].u = this->cells[1][y].u_next;
         } else {
-            this->cells[this->getCellIndex(0, y)].u = this->cells[this->getCellIndex(0, y)].u_boundary;
+            this->cells[0][y].u = this->cells[0][y].u_boundary;
         }
 
         // check u right
-        if (!this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].u_boundary_set) {
-            this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].u = this->cells[this->getCellIndex(this->box_dimension_x - 2, y)].u;
+        if (!this->cells[this->box_dimension_x - 1][y].u_boundary_set) {
+            this->cells[this->box_dimension_x - 1][y].u = this->cells[this->box_dimension_x - 2][y].u;
         } else {
-            this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].u = this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].u_boundary;
+            this->cells[this->box_dimension_x - 1][y].u = this->cells[this->box_dimension_x - 1][y].u_boundary;
         }
 
         // check v left
-        if (!this->cells[this->getCellIndex(0, y)].v_boundary_set) {
-            this->cells[this->getCellIndex(0, y)].v = this->cells[this->getCellIndex(1, y)].v_next;
+        if (!this->cells[0][y].v_boundary_set) {
+            this->cells[0][y].v = this->cells[1][y].v_next;
         } else {
-            this->cells[this->getCellIndex(0, y)].v = this->cells[this->getCellIndex(0, y)].v_boundary;
+            this->cells[0][y].v = this->cells[0][y].v_boundary;
         }
 
         // check v right
-        if (!this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].v_boundary_set) {
-            this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].v = this->cells[this->getCellIndex(this->box_dimension_x - 2, y)].v;
+        if (!this->cells[this->box_dimension_x - 1][y].v_boundary_set) {
+            this->cells[this->box_dimension_x - 1][y].v = this->cells[this->box_dimension_x - 2][y].v;
         } else {
-            this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].v = this->cells[this->getCellIndex(this->box_dimension_x - 1, y)].v_boundary;
+            this->cells[this->box_dimension_x - 1][y].v = this->cells[this->box_dimension_x - 1][y].v_boundary;
         }
     }
 }

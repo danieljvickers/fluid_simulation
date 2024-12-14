@@ -30,9 +30,9 @@ public:
     ~NavierStokesSolver();
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
-    int setUBoundaryCondition(int x_index, int y_index, T BC);
-    int setVBoundaryCondition(int x_index, int y_index, T BC);
-    int setPBoundaryCondition(int x_index, int y_index, T BC);
+    int setUBoundaryCondition(int x, int y, T BC);
+    int setVBoundaryCondition(int x, int y, T BC);
+    int setPBoundaryCondition(int x, int y, T BC);
 
     int getCellIndex(int x_index, int y_index);
 
