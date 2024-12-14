@@ -1,3 +1,4 @@
 python/__pycache__/*
 fluid_cpp/.idea/*
 fluid_cpp/cmake-build-debug/*
+fluid_cpp/cmake-build-release/*
