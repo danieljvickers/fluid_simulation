@@ -24,5 +24,5 @@ add_library(fluid_cuda SHARED
 add_executable(main main.cpp)
 target_link_libraries(main fluid_cpp)
 
-add_executable(cuda_main cuda_main.cpp)
+add_executable(cuda_main cuda_main.cu)
 target_link_libraries(cuda_main fluid_cuda)

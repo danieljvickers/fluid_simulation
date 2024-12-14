@@ -13,18 +13,18 @@ The C++ code is meant to be a serial implementation of Navier-Stokes.
 
 The CUDA code is a large-scale parallel implementation of Navier-Stokes. I am leaving several versions of the simulation, and the data presented here is generated using an NVIDIA RTX 2080 Super, and will not likely not yield similar performance on your machine.
 
-## Python
-
-The most-basic implementation is a python version that leverages linear algebra in numpy. Because we will be implementing the Cpp and CUDA versions raw (without external libraries), the python implementation is quite optimial.
-
-### Citations
+## Citations
 
 The Python implementation is based upon an implementation that I found here: https://github.com/Ceyron/machine-learning-and-simulation/blob/main/english/simulation_scripts/lid_driven_cavity_python_simple.py
 The results of that solver are captured in a youtube video here: https://www.youtube.com/watch?v=BQLvNLgMTQE
 I want it to be clear that this Python code is largely influenced by the contents of the repository I just provided. The C++ and CUDA implementations are my own.
 It is easy to find plentiful descriptions of Navier-Stokes online. I will link here the wiki page for the equations: https://en.wikipedia.org/wiki/Navier%E2%80%93Stokes_equations
 
-### Code Explained
+## Python
+
+The most-basic implementation is a python version that leverages linear algebra in numpy. Because we will be implementing the Cpp and CUDA versions raw (without external libraries), the python implementation is quite optimial.
+
+#### Code Explained
 
 We will be tracking the pressure and velocity (stored as two patrices: u and v) of the fluid in the grid. To start, we instatiate our mesh grid:
 
@@ -137,7 +137,7 @@ v_previous = v_next
 p_previous = p_next
 ```
 
-### Results
+#### Results
 
 The result of the sim is the quiver plot below that captures the fluid velocity and pressure.
 
@@ -296,12 +296,22 @@ I we see that the C++ version has imporved performance by about a factor of 2.5x
 
 #### Results
 
+**But can it go EVEN faster?**
+
 ## CUDA
 
-### Code Explained
+### Initial Implementation
+
+#### Code Explained
 
 This version of the code will function largely by paralellizing individual cell calculations on the interior. Specifically, the test case that we have been demonstrating is 41x41=1681 cells. Rather than assigning a single thread to iterate through the loop, we will assign a single GPU thread to each index in the array of elements, which will perform it's calculations in isolation. We will have some required break points in the code to synchronize the kernel executions and prevent race conditions.
 
-### Results
+#### Results
 
-None
+So, how did all of that work go?
+
+[screenshot](figures/cuda_float_benchmarks.png)
+
+Now *THAT* is pod racing.
+
+Moving the compute to the GPU allowed us to launch a single thread for each cell in our array. The result is a flat reduction in our compute time. In total, this means launching 1681 total threads for each function that we called.

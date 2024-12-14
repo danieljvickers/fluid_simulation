@@ -8,8 +8,8 @@
 #include "../cpp/NavierStokesCell.h"
 #include "../cpp/NavierStokesSolver.h"
 
-#define KERNEL_2D_WIDTH 16
-#define KERNEL_2D_HEIGHT 16
+#define KERNEL_2D_WIDTH 41
+#define KERNEL_2D_HEIGHT 41
 
 template <class T>
 class ParallelNavierStokes : public NavierStokesSolver<T> {
