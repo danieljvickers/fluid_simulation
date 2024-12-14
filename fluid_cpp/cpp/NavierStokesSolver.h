@@ -4,49 +4,11 @@
 
 #ifndef NAVIERSTOKESSOLVER_H
 #define NAVIERSTOKESSOLVER_H
-#include <cmath>
-#include <limits>
+#include "NavierStokesCell.h"
 
-// parameters of the cells
-template <typename T>
-struct NavierStokesCell {
-    // the x velcoity (u), y velocity (v), and pressure (p)
-    T u = 0.;
-    T v = 0.;
-    T p = 0.;
-
-    // some values saved in the cell during computation
-    T du_dx = 0.;
-    T du_dy = 0.;
-    T dv_dx = 0.;
-    T dv_dy = 0.;
-    T u_laplacian = 0.;
-    T v_laplacian = 0.;
-    T du_dt = 0.;
-    T dv_dt = 0.;
-    T right_hand_size = 0.;
-
-    // placeholder for the updated values of the sim
-    T u_next = 0.;
-    T v_next = 0.;
-    T p_next = 0.;
-    T du_next_dx = 0.;
-    T dv_next_dy = 0.;
-    T dp_dx = 0.;
-    T dp_dy = 0.;
-
-    // boundary conditions (BCs). The set bool tells us if it has been set
-    T u_boundary = 0.;
-    T v_boundary = 0.;
-    T p_boundary = 0.;
-    bool u_boundary_set = false;
-    bool v_boundary_set = false;
-    bool p_boundary_set = false;
-
-};
-
-template <class T = float> class NavierStokesSolver {
-private:
+template <class T = float>
+class NavierStokesSolver {
+protected:
     int box_dimension_x;
     int box_dimension_y;
     T domain_size_x;
@@ -54,20 +16,7 @@ private:
     T element_length_x;
     T element_length_y;
 
-    NavierStokesCell<T>* cells;
-
-    void computeCentralDifference();
-    void computeLaplacian();
-    void computeTimeDerivitive();
-    void takeTimeStep();
-    void computeNextCentralDifference();
-    void computeRightHandSide();
-    void computePoissonStepApproximation();
-    void enforcePressureBoundaryConditions();
-    void updatePressure();
-    void computePressureCentralDifference();
-    void correctVelocityEstimates();
-    void enforceVelocityBoundaryConditions();
+    NavierStokesCell<T>** cells;
 
 public:
     T time_step = 0.001;
@@ -81,12 +30,9 @@ public:
     ~NavierStokesSolver();
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
-    int setUBoundaryCondition(int x_index, int y_index, T BC);
-    int setVBoundaryCondition(int x_index, int y_index, T BC);
-    int setPBoundaryCondition(int x_index, int y_index, T BC);
-
-    void solve();
-    int getCellIndex(int x_index, int y_index);
+    int setUBoundaryCondition(int x, int y, T BC);
+    int setVBoundaryCondition(int x, int y, T BC);
+    int setPBoundaryCondition(int x, int y, T BC);
 
     int getUValues(T* output);
     int getVValues(T* output);
