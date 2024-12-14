@@ -37,21 +37,16 @@ int main() {
         solver.setUBoundaryCondition(num_x_bins - 1, y, 0.);  // no floow into the right wall
         solver.setVBoundaryCondition(num_x_bins - 1, y, 0.);  // no flow inside the right wall
     }
-    solver.migrateHostToDevice();
-    std::cout << "Migrated Data" << std::endl;
 
     // Solve and retrieve the solution
-    solver.solve();
-    std::cout << "MSolved" << std::endl;
-    solver.migrateDeviceToHost();
-    std::cout << "Migrated Data" << std::endl;
+    solver.migrateSolve();
+
     auto* u_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
     auto* v_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
     auto* p_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
     solver.getUValues(u_values);
     solver.getVValues(v_values);
     solver.getPValues(p_values);
-    std::cout << "Got Values" << std::endl;
 
     // write solutions to file
     std::ofstream u_file;

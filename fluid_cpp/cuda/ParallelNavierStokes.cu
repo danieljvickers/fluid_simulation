@@ -270,6 +270,13 @@ void ParallelNavierStokes<T>::solve() {
 }
 
 template <class T>
+void ParallelNavierStokes<T>::migrateSolve() {
+    this->migrateHostToDevice();
+    this->solve();
+    this->migrateDeviceToHost();
+}
+
+template <class T>
 void ParallelNavierStokes<T>::enforcePressureBoundaryConditions() {
     dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
     int bx = (this->box_dimension_x + block_size.x - 1) / block_size.x;  // x size in blocks of the grid

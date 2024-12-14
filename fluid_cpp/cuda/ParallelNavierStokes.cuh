@@ -32,6 +32,7 @@ public:
     void migrateHostToDevice();
     void migrateDeviceToHost();
     void solve();
+    void migrateSolve();
 };
 
 // explicit instantiation allows float and double precision types
