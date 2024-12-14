@@ -8,11 +8,13 @@
 #include "../cpp/NavierStokesCell.h"
 #include "../cpp/NavierStokesSolver.h"
 
+#define KERNEL_2D_WIDTH 16
+#define KERNEL_2D_HEIGHT 16
 
 template <class T>
 class ParallelNavierStokes : public NavierStokesSolver<T> {
 private:
-    NavierStokesCell<T>** d_cells;
+    NavierStokesCell<T>* d_cells;
 
     void enforcePressureBoundaryConditions();
     void updatePressure();
