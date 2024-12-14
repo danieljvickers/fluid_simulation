@@ -85,14 +85,6 @@ int NavierStokesSolver<T>::setPBoundaryCondition(int const x, int const y, T con
 }
 
 template <class T>
-int NavierStokesSolver<T>::getCellIndex(int const x_index, int const y_index) {
-    if (x_index >= box_dimension_x || y_index >= box_dimension_y) {
-        return -1;
-    }
-    return y_index * box_dimension_y + x_index;
-}
-
-template <class T>
 int NavierStokesSolver<T>::getUValues(T* output) {
     for (int x = 0; x < this->box_dimension_x; x++) {
         for (int y = 0; y <  this->box_dimension_y; y++) {

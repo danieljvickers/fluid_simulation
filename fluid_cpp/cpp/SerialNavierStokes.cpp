@@ -16,9 +16,8 @@ SerialNavierStokes<T>::~SerialNavierStokes() {
 
 }
 
-
 template <class T>
-void SerialNavierStokes<T>::solve() {
+void SerialNavierStokes<T>::safeSolve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
         // compute useful derivatives
@@ -42,6 +41,27 @@ void SerialNavierStokes<T>::solve() {
         // get the pressure central difference, correct the u and v values, and enforce BCs
         this->computePressureCentralDifference();
         this->correctVelocityEstimates();
+        this->enforceVelocityBoundaryConditions();
+    }
+}
+
+template <class T>
+void SerialNavierStokes<T>::solve() {
+    // loop over each time step
+    for (int i = 0; i < this->num_iterations; i++) {
+        this->unifiedApproximateTimeStep();
+        this->unifiedComputeRightHand();
+
+        // take a series of poisson steps to approximate the pressure in each cell
+        for (int j = 0; j < this->num_poisson_iterations; j++) {
+            // compute the Poisson step, enforce BCs, and enforce the pressure
+            this->computePoissonStepApproximation();
+            this->enforcePressureBoundaryConditions();
+            this->updatePressure();
+        }
+
+        // get the pressure central difference, correct the u and v values, and enforce BCs
+        this->unifiedVelocityCorrection();
         this->enforceVelocityBoundaryConditions();
     }
 }
@@ -270,6 +290,61 @@ void SerialNavierStokes<T>::enforceVelocityBoundaryConditions() {
             this->cells[this->box_dimension_x - 1][y].v = this->cells[this->box_dimension_x - 2][y].v;
         } else {
             this->cells[this->box_dimension_x - 1][y].v = this->cells[this->box_dimension_x - 1][y].v_boundary;
+        }
+    }
+}
+
+template <class T>
+void SerialNavierStokes<T>::unifiedApproximateTimeStep() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            // compute the central differences
+            this->cells[x][y].du_dx = (this->cells[x+1][y].u - this->cells[x-1][y].u) / 2. / this->element_length_x;
+            this->cells[x][y].dv_dx = (this->cells[x+1][y].v - this->cells[x-1][y].v) / 2. / this->element_length_x;
+            this->cells[x][y].du_dy = (this->cells[x][y+1].u - this->cells[x][y-1].u) / 2. / this->element_length_y;
+            this->cells[x][y].dv_dy = (this->cells[x][y+1].v - this->cells[x][y-1].v) / 2. / this->element_length_y;
+
+            // compute the laplacian
+            this->cells[x][y].u_laplacian = this->cells[x-1][y].u + this->cells[x+1][y].u + this->cells[x][y+1].u + this->cells[x][y-1].u;
+            this->cells[x][y].u_laplacian = (this->cells[x][y].u_laplacian - 4. * this->cells[x][y].u) / this->element_length_x / this->element_length_y;
+            this->cells[x][y].v_laplacian = this->cells[x-1][y].v + this->cells[x+1][y].v + this->cells[x][y+1].v + this->cells[x][y-1].v;
+            this->cells[x][y].v_laplacian = (this->cells[x][y].v_laplacian - 4. * this->cells[x][y].v) / this->element_length_x / this->element_length_y;
+
+            // get the time derivitives
+            this->cells[x][y].du_dt = this->kinematic_viscosity * this->cells[x][y].u_laplacian - this->cells[x][y].u * this->cells[x][y].du_dx - this->cells[x][y].v * this->cells[x][y].du_dy;
+            this->cells[x][y].dv_dt = this->kinematic_viscosity * this->cells[x][y].v_laplacian - this->cells[x][y].u * this->cells[x][y].dv_dx - this->cells[x][y].v * this->cells[x][y].dv_dy;
+
+            // step forward in time
+            this->cells[x][y].u_next = this->cells[x][y].u + this->time_step * this->cells[x][y].du_dt;
+            this->cells[x][y].v_next = this->cells[x][y].v + this->time_step * this->cells[x][y].dv_dt;
+        }
+    }
+}
+
+template <class T>
+void SerialNavierStokes<T>::unifiedComputeRightHand() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            // compute the central differences
+            this->cells[x][y].du_next_dx = (this->cells[x+1][y].u_next - this->cells[x-1][y].u_next) / 2. / this->element_length_x;
+            this->cells[x][y].dv_next_dy = (this->cells[x][y+1].v_next - this->cells[x][y-1].v_next) / 2. / this->element_length_y;
+
+            this->cells[x][y].right_hand_size = (this->density / this->time_step) * (this->cells[x][y].du_next_dx + this->cells[x][y].dv_next_dy);
+        }
+    }
+}
+
+template <class T>
+void SerialNavierStokes<T>::unifiedVelocityCorrection() {
+    for (int x = 1; x < this->box_dimension_x - 1; x++) {
+        for (int y = 1; y < this->box_dimension_y - 1; y++) {
+            // compute the central differences
+            this->cells[x][y].dp_dx = (this->cells[x+1][y].p - this->cells[x-1][y].p) / 2. / this->element_length_x;
+            this->cells[x][y].dp_dy = (this->cells[x][y+1].p - this->cells[x][y-1].p) / 2. / this->element_length_y;
+
+            // compute final velocity
+            this->cells[x][y].u = this->cells[x][y].u_next - (this->time_step / this->density) * this->cells[x][y].dp_dx;
+            this->cells[x][y].v = this->cells[x][y].v_next - (this->time_step / this->density) * this->cells[x][y].dp_dy;
         }
     }
 }

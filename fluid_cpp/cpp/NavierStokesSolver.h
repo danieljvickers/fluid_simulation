@@ -34,8 +34,6 @@ public:
     int setVBoundaryCondition(int x, int y, T BC);
     int setPBoundaryCondition(int x, int y, T BC);
 
-    int getCellIndex(int x_index, int y_index);
-
     int getUValues(T* output);
     int getVValues(T* output);
     int getPValues(T* output);
