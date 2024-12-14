@@ -3,14 +3,14 @@
 //
 
 #include "ParallelNavierStokes.cuh"
+#include <iostream>
 
 template <class T>
 ParallelNavierStokes<T>::ParallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
     : NavierStokesSolver<T>(box_dim_x, box_dim_y, domain_size_x, domain_size_y) {
-    cudaMalloc((void**)&this->d_cells, sizeof(NavierStokesCell<T>*) * box_dim_x);
-    for (int x = 0; x < box_dim_x; x++) {
-        cudaMalloc((void*)&(this->cells[x]), sizeof(NavierStokesCell<T>) * box_dim_y);
-        cudaMemcpy(this->d_cells[x], this->cells[x], sizeof(NavierStokesCell<T>) * box_dim_y, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&this->d_cells, sizeof(NavierStokesCell<T>) * box_dim_x * box_dim_y);
+    for (int x = 0; x < this->box_dimension_x; x++) {
+        cudaMemcpy(&(this->d_cells[x * this->box_dimension_y]), this->cells[x], sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyHostToDevice);
     }
 }
 
@@ -22,7 +22,7 @@ ParallelNavierStokes<T>::~ParallelNavierStokes() {
 template <class T>
 void ParallelNavierStokes<T>::migrateHostToDevice() {
     for (int x = 0; x < this->box_dimension_x; x++) {
-        cudaMemcpy(this->d_cells[x], this->cells[x], sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyHostToDevice);
+        cudaMemcpy(&(this->d_cells[x * this->box_dimension_y]), this->cells[x], sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyHostToDevice);
     }
 }
 
@@ -30,7 +30,7 @@ void ParallelNavierStokes<T>::migrateHostToDevice() {
 template <class T>
 void ParallelNavierStokes<T>::migrateDeviceToHost() {
     for (int x = 0; x < this->box_dimension_x; x++) {
-        cudaMemcpy(this->d_cells[x], this->cells[x], sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyHostToDevice);
+        cudaMemcpy(this->cells[x], &(this->d_cells[x * this->box_dimension_y]), sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyDeviceToHost);
     }
 }
 

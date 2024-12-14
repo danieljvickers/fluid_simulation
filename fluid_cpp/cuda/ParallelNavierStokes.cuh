@@ -12,7 +12,7 @@
 template <class T>
 class ParallelNavierStokes : public NavierStokesSolver<T> {
 private:
-    NavierStokesCell<T>* d_cells;
+    NavierStokesCell<T>** d_cells;
 
     void enforcePressureBoundaryConditions();
     void updatePressure();
