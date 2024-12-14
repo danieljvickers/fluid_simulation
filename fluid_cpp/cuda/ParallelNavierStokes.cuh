@@ -14,10 +14,21 @@ class ParallelNavierStokes : public NavierStokesSolver<T> {
 private:
     NavierStokesCell<T>* d_cells;
 
+    void enforcePressureBoundaryConditions();
+    void updatePressure();
+    void enforceVelocityBoundaryConditions();
+
+    void unifiedApproximateTimeStep();
+    void unifiedComputeRightHand();
+    void computePoissonStepApproximation();
+    void unifiedVelocityCorrection();
+
 public:
     ParallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
     ~ParallelNavierStokes();
 
+    void migrateHostToDevice();
+    void migrateDeviceToHost();
     void solve();
 };
 
