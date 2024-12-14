@@ -18,7 +18,23 @@ __global__ void enforce_pressure_BC_kernel(NavierStokesCell<T>* cells, int width
     for (int c = column; c < width; c++) {
         for (int r = row; r < height; r++) {
             int index = c * height + r;
-            cells[index].p = cells[index].p_next;
+
+            // return if you have a BC
+            if (cells[index].p_boundary_set) {
+                cells[index].p_next = cells[index].p_boundary;  // enforce the BC if it has been set
+                return;
+            }
+
+            // checks if you are on the edge, else do nothing
+            if (r == 0) {
+                cells[index].p_next = cells[index + 1].p_next; // equal to cell above
+            } else if (r == width - 1) {
+                cells[index].p_next = cells[index - 1].p_next; // equal to cell below
+            } else if (c == 0) {
+                cells[index].p_next = cells[index + height].p_next; // equal to cell to right
+            } else {
+                cells[index].p_next = cells[index - height].p_next;  // equal to cell to left
+            }
         }
     }
 }
@@ -43,10 +59,51 @@ __global__ void enforce_velocity_BC_kernel(NavierStokesCell<T>* cells, int width
     const int column = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
+    // iterate over u velocity values
     for (int c = column; c < width; c++) {
         for (int r = row; r < height; r++) {
             int index = c * height + r;
-            cells[index].p = cells[index].p_next;
+
+            // return if you have a BC
+            if (cells[index].u_boundary_set) {
+                cells[index].u = cells[index].u_boundary;  // enforce the BC if it has been set
+                return;
+            }
+
+            // checks if you are on the edge, else do nothing
+            if (r == 0) {
+                cells[index].u = cells[index + 1].u; // equal to cell above
+            } else if (r == width - 1) {
+                cells[index].u = cells[index - 1].u; // equal to cell below
+            } else if (c == 0) {
+                cells[index].u = cells[index + height].u; // equal to cell to right
+            } else {
+                cells[index].u = cells[index - height].u;  // equal to cell to left
+            }
+        }
+    }
+
+    // iterate over v velocity values
+    for (int c = column; c < width; c++) {
+        for (int r = row; r < height; r++) {
+            int index = c * height + r;
+
+            // return if you have a BC
+            if (cells[index].v_boundary_set) {
+                cells[index].v = cells[index].v_boundary;  // enforce the BC if it has been set
+                return;
+            }
+
+            // checks if you are on the edge, else do nothing
+            if (r == 0) {
+                cells[index].v = cells[index + 1].v; // equal to cell above
+            } else if (r == width - 1) {
+                cells[index].v = cells[index - 1].v; // equal to cell below
+            } else if (c == 0) {
+                cells[index].v = cells[index + height].v; // equal to cell to right
+            } else {
+                cells[index].v = cells[index - height].v;  // equal to cell to left
+            }
         }
     }
 }
