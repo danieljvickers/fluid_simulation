@@ -152,19 +152,149 @@ The results of 5000 time trials for the Python version is shown below.
 
 ![screenshot](figures/python_benchmarks.png)
 
+In all, this code is capable of performing small simulations and providing reasonable results.
+
+**...But can it go faster?**
+
 ## C++
 
-### Code Explained
+### Serial Implementation
+#### Code Explained
 
-The best explanation of the C++ implementation can be found in the readme for the cpp directory. The primary note is that this code is a direct port of the python code. It was also templated for floating point and double precisions.
+For the C++ implementation, we first create a templated class that stores useful data of the simulation, and has useful getters and setters. All of the variables for each cell to make the simulation go fast are given in `fluid_cpp/cpp/NavierStokesCell.h` as:
 
-### Results
+```c++
+template <typename T>
+struct NavierStokesCell {
+    // the x velcoity (u), y velocity (v), and pressure (p)
+    T u = 0.;
+    T v = 0.;
+    T p = 0.;
 
-The timing performance of each template of the code is similar enough to only present one iteration. We can view the single-point precision performance on my machine below:
+    // some values saved in the cell during computation
+    T du_dx = 0.;
+    T du_dy = 0.;
+    T dv_dx = 0.;
+    T dv_dy = 0.;
+    T u_laplacian = 0.;
+    T v_laplacian = 0.;
+    T du_dt = 0.;
+    T dv_dt = 0.;
+    T right_hand_size = 0.;
+
+    // placeholder for the updated values of the sim
+    T u_next = 0.;
+    T v_next = 0.;
+    T p_next = 0.;
+    T du_next_dx = 0.;
+    T dv_next_dy = 0.;
+    T dp_dx = 0.;
+    T dp_dy = 0.;
+
+    // boundary conditions (BCs). The set bool tells us if it has been set
+    T u_boundary = 0.;
+    T v_boundary = 0.;
+    T p_boundary = 0.;
+    bool u_boundary_set = false;
+    bool v_boundary_set = false;
+    bool p_boundary_set = false;
+};
+```
+
+Notice that I am keeping track of some `da_next_db` values because it allows us to perform some computation without iterating through an entire loop again. I then instantiate our deminsion space in the `NavierStokesSolver()` object constructor, which has a private variable of `cells` to hold the parameters. The code for instantiation can be found in `fluid_cpp/cpp/NavierStokesSolver.cpp` file as:
+
+```c++
+this->cells = new NavierStokesCell<T>*[box_dim_x];
+for (int x = 0; x < box_dim_x; x++) {
+    this->cells[x] = new NavierStokesCell<T>[box_dim_y];
+}
+```
+
+There is a good bit of code here, but the easiest way to show the steps of the computation is to show the `safeSolve()` method, which is a method template with each calculation being done in series. Inside each method is a pair of nested `for` loops, which iterate over each cell in the space. It turns out we can reduce this to only 4 pairs of loops, which is in the `solve()` method, not shown here. Below is the code for `safeSolve()`:
+
+```c++
+template <class T>
+void SerialNavierStokes<T>::safeSolve() {
+    // loop over each time step
+    for (int i = 0; i < this->num_iterations; i++) {
+        // compute useful derivatives
+        this->computeCentralDifference();
+        this->computeLaplacian();
+        this->computeTimeDerivitive();
+
+        // take a tenative step forward in time
+        this->takeTimeStep();
+        this->computeNextCentralDifference(); // recompute the central difference
+        this->computeRightHandSide();
+
+        // take a series of poisson steps to approximate the pressure in each cell
+        for (int j = 0; j < this->num_poisson_iterations; j++) {
+            // compute the Poisson step, enforce BCs, and enforce the pressure
+            this->computePoissonStepApproximation();
+            this->enforcePressureBoundaryConditions();
+            this->updatePressure();
+        }
+
+        // get the pressure central difference, correct the u and v values, and enforce BCs
+        this->computePressureCentralDifference();
+        this->correctVelocityEstimates();
+        this->enforceVelocityBoundaryConditions();
+    }
+}
+```
+
+When we are ready, we call the code by creating a `SerialNavierStokes` object, setting all of the parameters, establishing boundary conditions, and running the `solve()` method:
+
+```c++
+// set up the solver
+int num_x_bins = 41;
+int num_y_bins = 41;
+float width = 1.0;
+float height = 1.0;
+SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+
+// entire specific constants of the simulation
+solver.density = 1.0;
+solver.kinematic_viscosity = 0.1;
+solver.num_iterations = 1000;
+solver.num_poisson_iterations = 50;
+solver.time_step = 0.001;
+solver.stability_safety_factor = 0.5;
+
+// establish boundary conditions
+for (int x = 0; x < num_x_bins; x++) {
+    solver.setUBoundaryCondition(x, 0, 0.);  // no flow inside of the floor
+    solver.setVBoundaryCondition(x, 0, 0.);  // no flow into the floor
+    solver.setUBoundaryCondition(x, num_y_bins - 1, 1.);  // water flowing to the right on top
+    solver.setVBoundaryCondition(x, num_y_bins - 1, 0.);  // no flow into the top
+    solver.setPBoundaryCondition(x, num_y_bins - 1, 0.);  // no pressure at the top
+}
+for (int y = 1; y < num_y_bins - 1; y++) {
+    solver.setUBoundaryCondition(0, y, 0.);  // no flow into of the left wall
+    solver.setVBoundaryCondition(0, y, 0.);  // no flow inside the left wall
+    solver.setUBoundaryCondition(num_x_bins - 1, y, 0.);  // no floow into the right wall
+    solver.setVBoundaryCondition(num_x_bins - 1, y, 0.);  // no flow inside the right wall
+}
+
+// Solve and retrieve the solution
+solver.solve();
+```
+
+#### Results
+
+We can view the single-point precision performance on my machine below:
 
 ![screenshot](figures/cpp_float_benchmarks.png)
 
-I we see that the C++ version is actually slower than the python version. Their are two primary explanations for this. First, the primary speed up we can achieve is by multithreading the code to outperform the python compute. There are also many redundant calculations for index values being performed.
+I we see that the C++ version has imporved performance by about a factor of 2.5x. That is a nice performance gain.
+
+**...But can it go even faster?**
+
+### Threaded Implementation
+
+#### Code Explained
+
+#### Results
 
 ## CUDA
 
