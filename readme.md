@@ -310,7 +310,7 @@ This version of the code will function largely by paralellizing individual cell 
 
 So, how did all of that work go?
 
-[screenshot](figures/cuda_float_benchmarks.png)
+![screenshot](figures/cuda_float_benchmarks.png)
 
 Now *THAT* is pod racing.
 
