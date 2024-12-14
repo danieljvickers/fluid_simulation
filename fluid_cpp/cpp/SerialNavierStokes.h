@@ -23,14 +23,19 @@ private:
     void correctVelocityEstimates();
     void enforceVelocityBoundaryConditions();
 
-public:
-        SerielNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
-        ~SerielNavierStokes();
+    void unifiedApproximateTimeStep();
+    void unifiedComputeRightHand();
+    void unifiedVelocityCorrection();
 
+public:
+        SerialNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
+        ~SerialNavierStokes();
+
+    void safeSolve();
     void solve();
 };
 
-template class SerielNavierStokes<float>;
-template class SerielNavierStokes<double>;
+template class SerialNavierStokes<float>;
+template class SerialNavierStokes<double>;
 
 #endif //SERIALNAVIERSTOKES_H

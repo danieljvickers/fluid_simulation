@@ -1,7 +1,8 @@
 #include <iostream>
 #include <chrono>
 #include <fstream>
-#include "cpp/SerielNavierStokes.h"
+
+#include "cpp/SerialNavierStokes.h"
 
 int main() {
     // set up the solver
@@ -9,7 +10,7 @@ int main() {
     int num_y_bins = 41;
     float width = 1.0;
     float height = 1.0;
-    SerielNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
 
     // entire specific constants of the simulation
     solver.density = 1.0;
@@ -63,10 +64,9 @@ int main() {
     free(u_values);
     free(v_values);
     free(p_values);
-    return 0;
 
     // run time trials for the solver
-    int num_time_trials = 5000;
+    int num_time_trials = 10;
     auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
     float compute_time_ms = 0.;
     for (int i = 0; i < num_time_trials; i++) {

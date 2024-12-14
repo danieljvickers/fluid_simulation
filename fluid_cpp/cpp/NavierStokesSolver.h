@@ -16,7 +16,7 @@ protected:
     T element_length_x;
     T element_length_y;
 
-    NavierStokesCell<T>* cells;
+    NavierStokesCell<T>** cells;
 
 public:
     T time_step = 0.001;
@@ -30,11 +30,9 @@ public:
     ~NavierStokesSolver();
     int setBoxDimenension(int x_dim, int y_dim);
     int setDomainSize(T domain_size_x, T domain_size_y);
-    int setUBoundaryCondition(int x_index, int y_index, T BC);
-    int setVBoundaryCondition(int x_index, int y_index, T BC);
-    int setPBoundaryCondition(int x_index, int y_index, T BC);
-
-    int getCellIndex(int x_index, int y_index);
+    int setUBoundaryCondition(int x, int y, T BC);
+    int setVBoundaryCondition(int x, int y, T BC);
+    int setPBoundaryCondition(int x, int y, T BC);
 
     int getUValues(T* output);
     int getVValues(T* output);
