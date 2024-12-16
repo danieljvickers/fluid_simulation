@@ -19,6 +19,7 @@ The Python implementation is based upon an implementation that I found here: htt
 The results of that solver are captured in a youtube video here: https://www.youtube.com/watch?v=BQLvNLgMTQE
 I want it to be clear that this Python code is largely influenced by the contents of the repository I just provided. The C++ and CUDA implementations are my own.
 It is easy to find plentiful descriptions of Navier-Stokes online. I will link here the wiki page for the equations: https://en.wikipedia.org/wiki/Navier%E2%80%93Stokes_equations
+"GPU Gems", published by NVIDIA, is one of the best resources available for physics-GPU compute optimization. I found (only after making an initial immplemtation of Navier-Stokes) that GPU Gems volume 1 has already published an article about a Navier-Stokes solver: https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-38-fast-fluid-dynamics-simulation-gpu
 
 ## Python
 
