@@ -18,8 +18,8 @@ int main() {
     // entire specific constants of the simulation
     solver.density = 1.0;
     solver.kinematic_viscosity = 0.1;
-    solver.num_iterations = 100;
-    solver.num_poisson_iterations = 0;
+    solver.num_iterations = 1000;
+    solver.num_poisson_iterations = 50;
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
 
