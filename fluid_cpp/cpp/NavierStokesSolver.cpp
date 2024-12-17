@@ -113,3 +113,33 @@ int NavierStokesSolver<T>::getPValues(T* output) {
     }
     return 0;
 }
+
+template <class T>
+int NavierStokesSolver<T>::getUNextValues(T* output) {
+    for (int x = 0; x < this->box_dimension_x; x++) {
+        for (int y = 0; y <  this->box_dimension_y; y++) {
+            output[x * this->box_dimension_x + y] = this->cells[x][y].u_next;
+        }
+    }
+    return 0;
+}
+
+template <class T>
+int NavierStokesSolver<T>::getRightHand(T* output) {
+    for (int x = 0; x < this->box_dimension_x; x++) {
+        for (int y = 0; y <  this->box_dimension_y; y++) {
+            output[x * this->box_dimension_x + y] = this->cells[x][y].right_hand_size;
+        }
+    }
+    return 0;
+}
+
+template <class T>
+int NavierStokesSolver<T>::getPNext(T* output) {
+    for (int x = 0; x < this->box_dimension_x; x++) {
+        for (int y = 0; y <  this->box_dimension_y; y++) {
+            output[x * this->box_dimension_x + y] = this->cells[x][y].p_next;
+        }
+    }
+    return 0;
+}

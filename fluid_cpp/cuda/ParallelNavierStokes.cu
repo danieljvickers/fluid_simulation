@@ -3,6 +3,8 @@
 //
 
 #include "ParallelNavierStokes.cuh"
+
+#include <cuda_runtime_api.h>
 #include <iostream>
 
 /*
@@ -15,14 +17,14 @@ __global__ void enforce_pressure_BC_kernel(NavierStokesCell<T>* cells, int width
     const int column = blockIdx.x * blockDim.x + threadIdx.x;
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    for (int c = column; c < width; c++) {
-        for (int r = row; r < height; r++) {
+    for (int c = column; c < width; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
 
             // return if you have a BC
             if (cells[index].p_boundary_set) {
                 cells[index].p_next = cells[index].p_boundary;  // enforce the BC if it has been set
-                return;
+                continue;
             }
 
             // checks if you are on the edge, else do nothing
@@ -32,7 +34,7 @@ __global__ void enforce_pressure_BC_kernel(NavierStokesCell<T>* cells, int width
                 cells[index].p_next = cells[index - 1].p_next; // equal to cell below
             } else if (c == 0) {
                 cells[index].p_next = cells[index + height].p_next; // equal to cell to right
-            } else {
+            } else if (c == height - 1) {
                 cells[index].p_next = cells[index - height].p_next;  // equal to cell to left
             }
         }
@@ -42,11 +44,11 @@ __global__ void enforce_pressure_BC_kernel(NavierStokesCell<T>* cells, int width
 template <typename T>
 __global__ void update_pressure_kernel(NavierStokesCell<T>* cells, int width, int height) {
     // get our location in the grid
-    const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
-    const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    const int column = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
-    for (int c = column; c < width - 1; c++) {
-        for (int r = row; r < height - 1; r++) {
+    for (int c = column; c < width; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
             cells[index].p = cells[index].p_next;
         }
@@ -60,8 +62,8 @@ __global__ void enforce_velocity_BC_kernel(NavierStokesCell<T>* cells, int width
     const int row = blockIdx.y * blockDim.y + threadIdx.y;
 
     // iterate over u velocity values
-    for (int c = column; c < width; c++) {
-        for (int r = row; r < height; r++) {
+    for (int c = column; c < width; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
 
             // return if you have a BC
@@ -77,15 +79,15 @@ __global__ void enforce_velocity_BC_kernel(NavierStokesCell<T>* cells, int width
                 cells[index].u = cells[index - 1].u; // equal to cell below
             } else if (c == 0) {
                 cells[index].u = cells[index + height].u; // equal to cell to right
-            } else {
+            } else if (c == height - 1) {
                 cells[index].u = cells[index - height].u;  // equal to cell to left
             }
         }
     }
 
     // iterate over v velocity values
-    for (int c = column; c < width; c++) {
-        for (int r = row; r < height; r++) {
+    for (int c = column; c < width; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
 
             // return if you have a BC
@@ -101,7 +103,7 @@ __global__ void enforce_velocity_BC_kernel(NavierStokesCell<T>* cells, int width
                 cells[index].v = cells[index - 1].v; // equal to cell below
             } else if (c == 0) {
                 cells[index].v = cells[index + height].v; // equal to cell to right
-            } else {
+            } else if (c == height - 1) {
                 cells[index].v = cells[index - height].v;  // equal to cell to left
             }
         }
@@ -114,8 +116,8 @@ __global__ void unified_timestep_kernel(NavierStokesCell<T>* cells, int width, i
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
     const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    for (int c = column; c < width - 1; c++) {
-        for (int r = row; r < height - 1; r++) {
+    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
             int up = index + 1;
             int down = index - 1;
@@ -123,24 +125,72 @@ __global__ void unified_timestep_kernel(NavierStokesCell<T>* cells, int width, i
             int right = index + height;
 
             // compute the central differences
-            cells[index].du_dx = (cells[right].u - cells[left].u) / 2. / element_length_x;
-            cells[index].dv_dx = (cells[right].v - cells[left].v) / 2. / element_length_x;
-            cells[index].du_dy = (cells[up].u - cells[down].u) / 2. / element_length_y;
-            cells[index].dv_dy = (cells[up].v - cells[down].v) / 2. / element_length_y;
+            T du_dx = (cells[right].u - cells[left].u) / 2. / element_length_x;
+            T dv_dx = (cells[right].v - cells[left].v) / 2. / element_length_x;
+            T du_dy = (cells[up].u - cells[down].u) / 2. / element_length_y;
+            T dv_dy = (cells[up].v - cells[down].v) / 2. / element_length_y;
 
             // compute the laplacian
             T u_laplacian = cells[left].u + cells[right].u + cells[up].u + cells[down].u;
-            cells[index].u_laplacian = (u_laplacian - 4. * cells[index].u) / element_length_x / element_length_y;
+            u_laplacian = (u_laplacian - 4. * cells[index].u) / element_length_x / element_length_y;
             T v_laplacian = cells[left].v + cells[right].v + cells[up].v + cells[down].v;
-            cells[index].v_laplacian = (v_laplacian - 4. * cells[index].v) / element_length_x / element_length_y;
+            v_laplacian = (v_laplacian - 4. * cells[index].v) / element_length_x / element_length_y;
 
             // get the time derivitives
-            cells[index].du_dt = kinematic_viscosity * cells[index].u_laplacian - cells[index].u * cells[index].du_dx - cells[index].v * cells[index].du_dy;
-            cells[index].dv_dt = kinematic_viscosity * cells[index].v_laplacian - cells[index].u * cells[index].dv_dx - cells[index].v * cells[index].dv_dy;
+            T du_dt = kinematic_viscosity * u_laplacian - cells[index].u * du_dx - cells[index].v * du_dy;
+            T dv_dt = kinematic_viscosity * v_laplacian - cells[index].u * dv_dx - cells[index].v * dv_dy;
 
             // step forward in time
-            cells[index].u_next = cells[index].u + time_step * cells[index].du_dt;
-            cells[index].v_next = cells[index].v + time_step * cells[index].dv_dt;
+            cells[index].u_next = cells[index].u + time_step * du_dt;
+            cells[index].v_next = cells[index].v + time_step * dv_dt;
+        }
+    }
+}
+
+template <typename T>
+__global__ void vector_time_step(T* u, T* v, T* u_temp, T* v_temp, int width, int height, T element_length_x, T element_length_y, T kinematic_viscosity, T time_step) {
+    // get our location in the grid
+    const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
+
+    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
+            int index = c * height + r;
+            int up = index + 1;
+            int down = index - 1;
+            int left = index - height;
+            int right = index + height;
+
+            T u_current = u[index];
+            T u_up = u[up];
+            T u_down = u[down];
+            T u_left = u[left];
+            T u_right = u[right];
+            T v_current = v[index];
+            T v_up = v[up];
+            T v_down = v[down];
+            T v_left = v[left];
+            T v_right = v[right];
+
+            // compute the central differences  // 200 ms
+            T du_dx = (u_right - u_left) / 2. / element_length_x;
+            T dv_dx = (v_right - v_left) / 2. / element_length_x;
+            T du_dy = (u_up - u_down) / 2. / element_length_y;
+            T dv_dy = (v_up - v_down) / 2. / element_length_y;
+
+            // compute the laplacian  // 380 ms
+            T u_laplacian = u_left + u_right + u_up + u_down;
+            u_laplacian = (u_laplacian - 4. * u_current) / element_length_x / element_length_y;
+            T v_laplacian = v_left + v_right + v_up + v_down;
+            v_laplacian = (v_laplacian - 4. * v_current) / element_length_x / element_length_y;
+
+            // get the time derivitives  // 755 ms
+            T du_dt = kinematic_viscosity * u_laplacian - u_current * du_dx - v_current * du_dy;
+            T dv_dt = kinematic_viscosity * v_laplacian - u_current * dv_dx - v_current * dv_dy;
+
+            // step forward in time  // 755 ms
+            u_temp[index] = u_current + time_step * du_dt;
+            v_temp[index] = v_current + time_step * dv_dt;
         }
     }
 }
@@ -151,8 +201,8 @@ __global__ void compute_righthand_kernel(NavierStokesCell<T>* cells, int width, 
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
     const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    for (int c = column; c < width - 1; c++) {
-        for (int r = row; r < height - 1; r++) {
+    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
             int up = index + 1;
             int down = index - 1;
@@ -173,8 +223,8 @@ __global__ void poisson_step_kernel(NavierStokesCell<T>* cells, int width, int h
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
     const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    for (int c = column; c < width - 1; c++) {
-        for (int r = row; r < height - 1; r++) {
+    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
             int up = index + 1;
             int down = index - 1;
@@ -195,8 +245,8 @@ __global__ void velocity_correction_kerenl(NavierStokesCell<T>* cells, int width
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
     const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    for (int c = column; c < width - 1; c++) {
-        for (int r = row; r < height - 1; r++) {
+    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
             int up = index + 1;
             int down = index - 1;
@@ -222,9 +272,16 @@ template <class T>
 ParallelNavierStokes<T>::ParallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
     : NavierStokesSolver<T>(box_dim_x, box_dim_y, domain_size_x, domain_size_y) {
     cudaMalloc((void**)&this->d_cells, sizeof(NavierStokesCell<T>) * box_dim_x * box_dim_y);
+    cudaMalloc((void**)&this->d_u, sizeof(T) * box_dim_x * box_dim_y);
+    cudaMalloc((void**)&this->d_v, sizeof(T) * box_dim_x * box_dim_y);
+    cudaMalloc((void**)&this->d_u_temp, sizeof(T) * box_dim_x * box_dim_y);
+    cudaMalloc((void**)&this->d_v_temp, sizeof(T) * box_dim_x * box_dim_y);
+    cudaMalloc((void**)&this->d_p, sizeof(T) * box_dim_x * box_dim_y);
+
     for (int x = 0; x < this->box_dimension_x; x++) {
         cudaMemcpy(&(this->d_cells[x * this->box_dimension_y]), this->cells[x], sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyHostToDevice);
     }
+    this->createKernelDims();
 }
 
 template <class T>
@@ -247,98 +304,82 @@ void ParallelNavierStokes<T>::migrateDeviceToHost() {
     }
 }
 
+template <class T>
+void ParallelNavierStokes<T>::createKernelDims() {
+    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
+    dim3 grid_size = dim3(GRID_2D_WIDTH, GRID_2D_HEIGHT);
+
+    this->block_size = block_size;
+    this->grid_size = grid_size;
+}
+
 
 template <class T>
 void ParallelNavierStokes<T>::solve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
-        this->unifiedApproximateTimeStep();
-        this->unifiedComputeRightHand();
+        this->unifiedApproximateTimeStep();  // 771
+        this->unifiedComputeRightHand();  // 197
 
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
             // compute the Poisson step, enforce BCs, and enforce the pressure
-            this->computePoissonStepApproximation();
-            this->enforcePressureBoundaryConditions();
-            this->updatePressure();
+            this->computePoissonStepApproximation();  // 24.29 :: 1023.3
+            this->enforcePressureBoundaryConditions();  // 1.457 :: 66.5
+            this->updatePressure();  // 6.604 :: 265.881
         }
 
         // get the pressure central difference, correct the u and v values, and enforce BCs
-        this->unifiedVelocityCorrection();
-        this->enforceVelocityBoundaryConditions();
+        this->unifiedVelocityCorrection();  // 217.622
+        this->enforceVelocityBoundaryConditions();  // 1.46
     }
 }
 
 template <class T>
-void ParallelNavierStokes<T>::enforcePressureBoundaryConditions() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 1) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 1) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
+void ParallelNavierStokes<T>::migrateSolve() {
+    this->migrateHostToDevice();
+    this->solve();
+    this->migrateDeviceToHost();
+}
 
-    enforce_pressure_BC_kernel<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y);
+template <class T>
+void ParallelNavierStokes<T>::enforcePressureBoundaryConditions() {
+    enforce_pressure_BC_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y);
 }
 
 template <class T>
 void ParallelNavierStokes<T>::updatePressure() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 3) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 3) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
-
-    update_pressure_kernel<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y);
+    update_pressure_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y);
 }
 
 template <class T>
 void ParallelNavierStokes<T>::enforceVelocityBoundaryConditions() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 1) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 1) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
-
-    enforce_velocity_BC_kernel<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y);
+    enforce_velocity_BC_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y);
 }
 
 template <class T>
 void ParallelNavierStokes<T>::unifiedApproximateTimeStep() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 3) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 3) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
+    // vector_time_step<T><<<this->grid_size, this->block_size>>>(this->d_u, this->d_v, this->d_u_temp, this->d_v_temp, this->box_dimension_x, this->box_dimension_y,
+    //     this->element_length_x,this->element_length_y, this->kinematic_viscosity, this->time_step);
 
-    unified_timestep_kernel<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
+    unified_timestep_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
         this->element_length_x,this->element_length_y, this->kinematic_viscosity, this->time_step);
 }
 
 template <class T>
 void ParallelNavierStokes<T>::unifiedComputeRightHand() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 3) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 3) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
-
-    compute_righthand_kernel<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
+    compute_righthand_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
         this->element_length_x, this->element_length_y, this->density, this->time_step);
 }
 
 template <class T>
 void ParallelNavierStokes<T>::computePoissonStepApproximation() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 3) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 3) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
-
-    poisson_step_kernel<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
+    poisson_step_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
         this->element_length_x, this->element_length_y);
 }
 
 template <class T>
 void ParallelNavierStokes<T>::unifiedVelocityCorrection() {
-    dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 3) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 3) / block_size.y;  // y size in blocks of the grid
-    dim3 grid_size = dim3(bx, by);
-
-    velocity_correction_kerenl<T><<<grid_size, block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
+    velocity_correction_kerenl<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
         this->element_length_x, this->element_length_y, this->density, this->time_step);
 }

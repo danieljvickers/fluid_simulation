@@ -66,7 +66,7 @@ int main() {
     free(p_values);
 
     // run time trials for the solver
-    int num_time_trials = 10;
+    int num_time_trials = 1;
     auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
     float compute_time_ms = 0.;
     for (int i = 0; i < num_time_trials; i++) {

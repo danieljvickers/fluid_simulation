@@ -8,13 +8,22 @@
 #include "../cpp/NavierStokesCell.h"
 #include "../cpp/NavierStokesSolver.h"
 
-#define KERNEL_2D_WIDTH 41
-#define KERNEL_2D_HEIGHT 41
+#define KERNEL_2D_WIDTH 16
+#define KERNEL_2D_HEIGHT 16
+#define GRID_2D_WIDTH 4
+#define GRID_2D_HEIGHT 4
 
 template <class T>
 class ParallelNavierStokes : public NavierStokesSolver<T> {
 private:
     NavierStokesCell<T>* d_cells;
+    T* d_u;
+    T* d_v;
+    T* d_u_temp;
+    T* d_v_temp;
+    T* d_p;
+    dim3 block_size;
+    dim3 grid_size;
 
     void enforcePressureBoundaryConditions();
     void updatePressure();
@@ -25,6 +34,8 @@ private:
     void computePoissonStepApproximation();
     void unifiedVelocityCorrection();
 
+    void createKernelDims();
+
 public:
     ParallelNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y);
     ~ParallelNavierStokes();
@@ -32,6 +43,7 @@ public:
     void migrateHostToDevice();
     void migrateDeviceToHost();
     void solve();
+    void migrateSolve();
 };
 
 // explicit instantiation allows float and double precision types
