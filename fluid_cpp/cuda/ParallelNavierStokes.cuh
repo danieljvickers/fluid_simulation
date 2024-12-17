@@ -8,8 +8,8 @@
 #include "../cpp/NavierStokesCell.h"
 #include "../cpp/NavierStokesSolver.h"
 
-#define KERNEL_2D_WIDTH 4
-#define KERNEL_2D_HEIGHT 4
+#define KERNEL_2D_WIDTH 16
+#define KERNEL_2D_HEIGHT 16
 #define GRID_2D_WIDTH 4
 #define GRID_2D_HEIGHT 4
 

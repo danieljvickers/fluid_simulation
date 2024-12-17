@@ -307,10 +307,7 @@ void ParallelNavierStokes<T>::migrateDeviceToHost() {
 template <class T>
 void ParallelNavierStokes<T>::createKernelDims() {
     dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    int bx = (this->box_dimension_x + block_size.x - 1) / block_size.x;  // x size in blocks of the grid
-    int by = (this->box_dimension_y + block_size.y - 1) / block_size.y;  // y size in blocks of the grid
     dim3 grid_size = dim3(GRID_2D_WIDTH, GRID_2D_HEIGHT);
-    // dim3 grid_size = dim3(bx, by);
 
     this->block_size = block_size;
     this->grid_size = grid_size;

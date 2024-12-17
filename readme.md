@@ -303,9 +303,50 @@ I we see that the C++ version has imporved performance by about a factor of 2.5x
 
 ### Initial Implementation
 
-#### Code Explained
+When we launch a kernel in CUDA, we need to select a grid size that we are going to use. The optimal grid size for you will depend upon your hardware. When I was done, I found that my optimal choice of grid dimensions for the RTX 2080 Super was:
 
-This version of the code will function largely by paralellizing individual cell calculations on the interior. Specifically, the test case that we have been demonstrating is 41x41=1681 cells. Rather than assigning a single thread to iterate through the loop, we will assign a single GPU thread to each index in the array of elements, which will perform it's calculations in isolation. We will have some required break points in the code to synchronize the kernel executions and prevent race conditions.
+```c++
+#define KERNEL_2D_WIDTH 16
+#define KERNEL_2D_HEIGHT 16
+#define GRID_2D_WIDTH 4
+#define GRID_2D_HEIGHT 4
+```
+
+We can convert this to CUDA grid and block `dim3` objects as
+
+```c++
+dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);
+dim3 grid_size = dim3(GRID_2D_WIDTH, GRID_2D_HEIGHT);
+```
+
+All of our kernels will be scheduled on the CUDA stream via a kernel call, where we pass in information, but also our grid dimension objects. For example, here is an example of launching a kernel to apply our pressure boundary conditions. We are also passing in our array of cells, `d_cells` and the width and height of our sim, `box_dimension_x` and `box_dimension_y`:
+
+```c++
+update_pressure_kernel<<<grid_size, block_size>>>(d_cells, box_dimension_x, box_dimension_y);
+```
+
+Note that because our cells are arranged in 2D space, I am launching the kernels as a 2D grid. This is optional and does not come with any performance inmprovement. It only makes the code easier to work with and read. We can get the location of that thread in the grid via `blockIdx.x * blockDim.x + threadIdx.x`. Note that this is the location along the x axis, as we are using the `.x` value. The same can be done in the y-dimension with `.y`.
+
+Now we have our threads loop over the array. Since we are launching threads in a grid, we only need to iterate in steps sizes of the grid size, which is found as `gridDim.x * blockDim.x`. Finally, inside this loop, we can get the index in the 1D array that we want via `int index = c * height + r;`. I demonstrate all of this in a kernel meant to update the pressure from a temporary placeholder value, here:
+
+```c++
+__global__ void update_pressure_kernel(NavierStokesCell<T>* cells, int width, int height) {
+    // get our location in the grid
+    const int column = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    for (int c = column; c < width; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height; r += gridDim.y * blockDim.y) {
+            int index = c * height + r;
+            cells[index].p = cells[index].p_next;
+        }
+    }
+}
+```
+
+Notice the `__global__` keyword, denoting it as a CUDA kernel.
+
+I converted all functions from the serial implementation into a CUDA kernel call, which launches on the GPU in this manner. For a detailed look at all of these changes, you can find them in `fluid_cpp/cuda/ParallelNavierStokes.cu`.
 
 #### Results
 
@@ -313,6 +354,12 @@ So, how did all of that work go?
 
 ![screenshot](figures/cuda_float_benchmarks.png)
 
-Now *THAT* is pod racing.
+That seems like a disapointing result. Why did we see a slight slow-down by over a factor of 2 after all the work to port the code to CUDA? In short, the answer has to do with 3 things:
 
-Moving the compute to the GPU allowed us to launch a single thread for each cell in our array. The result is a flat reduction in our compute time. In total, this means launching 1681 total threads for each function that we called.
+1. There is a scale problem. It turn out that at larger scale, the CUDA implementation is MUCH faster. For example, on a 410x410 grid (100x more cells), the performance of the serial C++ implementation was measured at about 2.9 s, while the CUDA implementation was measured to be about 1.0 s. That is about a 3x speed up at larger scale. This differnce makes sense when you consider that CUDA is a brute-force way to leverage more compute power to solve a problem. We aren't doing anything fancy, we are just throwing compute at the wall and seeing what sticks.
+
+2. This is extremely hardware dependent. A 2080 super is not considered a high-performance GPU. I would suspect that on more-modern hardware, like a 3090 or a 4090, we would be better than the serial implementation, even in the small test case. On a super-cluster computer, like an NVIDIA L40S, A100, or H100, these benchmarks are likely to be in the low-double-digit to single-digit range on the same test case.
+
+3. This CUDA code is not optimized. Specifically, I have made two sacrifices to the performance of our memory accesses. First, I opted to keep our old data structure from the serial implementation of the `NavierStokesCell` format. The problem with this is that is means that we are often copying over more data than we need each time we perform an initial memory read or write. Second is that we are not leveraging the shared memory accessible to us. The use of multiple global-memory reads and writes is extremely inefficient, as the memory is physically located quite far from the CUDA cores on the GPU. It is more-efficient to perform memory accesses from lower-level memory. In particular, it is common to utilize a memory region known as "shared memory", which is shared between threads in a block, and has faster memory read and write time.
+
+At this time, I do not wish to change my benchmark presented here nor upgrade my GPU. However, I can optimize the use of memory in our grids to address number 3. In particular, I would like to implement an optimization algorithm for CUDA known as "Tiling", which improves performance via use of shared memory. That will be the topic of discussion in the next section.
