@@ -18,8 +18,8 @@ int main() {
     // entire specific constants of the simulation
     solver.density = 1.0;
     solver.kinematic_viscosity = 0.1;
-    solver.num_iterations = 1000;
-    solver.num_poisson_iterations = 50;
+    solver.num_iterations = 100;
+    solver.num_poisson_iterations = 0;
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
 
@@ -70,7 +70,7 @@ int main() {
     free(p_values);
 
     // run time trials for the solver
-    int num_time_trials = 5000;
+    int num_time_trials = 5;
     auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
     float compute_time_ms = 0.;
     for (int i = 0; i < num_time_trials; i++) {

@@ -37,6 +37,10 @@ public:
     int getUValues(T* output);
     int getVValues(T* output);
     int getPValues(T* output);
+    int getUNextValues(T* output);
+    int getRightHand(T* output);
+    int getPNext(T* output);
+
 };
 
 // explicit instantiation allows float and double precision types
