@@ -307,7 +307,7 @@ void ParallelNavierStokes<T>::migrateDeviceToHost() {
 template <class T>
 void ParallelNavierStokes<T>::createKernelDims() {
     dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    dim3 grid_size = dim3(GRID_2D_WIDTH, GRID_2D_HEIGHT);
+    dim3 grid_size(GRID_2D_WIDTH, GRID_2D_HEIGHT); // compute the number of blocks
 
     this->block_size = block_size;
     this->grid_size = grid_size;
@@ -359,9 +359,6 @@ void ParallelNavierStokes<T>::enforceVelocityBoundaryConditions() {
 
 template <class T>
 void ParallelNavierStokes<T>::unifiedApproximateTimeStep() {
-    // vector_time_step<T><<<this->grid_size, this->block_size>>>(this->d_u, this->d_v, this->d_u_temp, this->d_v_temp, this->box_dimension_x, this->box_dimension_y,
-    //     this->element_length_x,this->element_length_y, this->kinematic_viscosity, this->time_step);
-
     unified_timestep_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
         this->element_length_x,this->element_length_y, this->kinematic_viscosity, this->time_step);
 }

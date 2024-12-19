@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "cpp/SerialNavierStokes.h"
+#include "cpp/ThreadedNavierStokes.h"
 
 int main() {
     // set up the solver
@@ -10,7 +11,8 @@ int main() {
     int num_y_bins = 41;
     float width = 1.0;
     float height = 1.0;
-    SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    // SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    ThreadedNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
 
     // entire specific constants of the simulation
     solver.density = 1.0;
@@ -46,7 +48,7 @@ int main() {
 
     // write solutions to file
     std::ofstream u_file;
-    u_file.open("CppUValues.float.dat", std::ios::binary);
+    u_file.open("CppValues.float.dat", std::ios::binary);
     std::ofstream v_file;
     v_file.open("CppVValues.float.dat", std::ios::binary);
     std::ofstream p_file;
@@ -82,7 +84,7 @@ int main() {
     // log the results of the time trials to terminal and file
     std::cout << "Time trials complete on average in " << compute_time_ms / static_cast<float>(num_time_trials) << "ms" << std::endl;
     std::ofstream time_file;
-    time_file.open("CppBenchmarks.float.dat", std::ios::binary);
+    time_file.open("ThreadedBenchmarks.float.dat", std::ios::binary);
     for (int i = 0; i < num_time_trials; i++) {
         time_file.write(reinterpret_cast<const char*>(&benchmarks[i]), sizeof(float));
     }
