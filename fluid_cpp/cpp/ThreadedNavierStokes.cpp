@@ -44,8 +44,6 @@ void ThreadedNavierStokes<T>::solveThread(int index) {
             this->syncThreads();
 
             this->enforcePressureBoundaryConditions(index);
-            // this->syncThreads();
-
             this->updatePressure(index);
             this->syncThreads();
         }
