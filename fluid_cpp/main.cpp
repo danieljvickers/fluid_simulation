@@ -48,7 +48,7 @@ int main() {
 
     // write solutions to file
     std::ofstream u_file;
-    u_file.open("CppValues.float.dat", std::ios::binary);
+    u_file.open("CppUValues.float.dat", std::ios::binary);
     std::ofstream v_file;
     v_file.open("CppVValues.float.dat", std::ios::binary);
     std::ofstream p_file;
@@ -66,9 +66,10 @@ int main() {
     free(u_values);
     free(v_values);
     free(p_values);
+    return 0;
 
     // run time trials for the solver
-    int num_time_trials = 1;
+    int num_time_trials = 50;
     auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
     float compute_time_ms = 0.;
     for (int i = 0; i < num_time_trials; i++) {

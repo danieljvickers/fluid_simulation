@@ -9,7 +9,7 @@
 #include <thread>
 #include <shared_mutex>
 
-#define THREADED_GRID_SIZE 41
+#define THREADED_GRID_SIZE 8
 
 template <class T = float>
 class ThreadedNavierStokes : public NavierStokesSolver<T> {
