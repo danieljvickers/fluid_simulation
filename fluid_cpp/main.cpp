@@ -28,8 +28,8 @@ int main() {
     float width = 1.0;
     float height = 1.0;
 
-    // SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
-    ThreadedNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    /// ThreadedNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
 
     // entire specific constants of the simulation
     solver.density = 1.0;
@@ -102,9 +102,9 @@ int main() {
         }
 
         // log the results of the time trials to terminal and file
-        std::cout << std::endl << "Time trials complete on average in " << compute_time_ms / static_cast<float>(NUMBER_TIME_TRIALS) << "ms" << std::endl;
+        std::cout << std::endl << "Time trials complete on average in " << compute_time_ms / static_cast<float>(NUMBER_TIME_TRIALS) << " ms" << std::endl;
         std::ofstream time_file;
-        time_file.open("ThreadedBenchmarks.float.dat", std::ios::binary);
+        time_file.open("CppBenchmarks.float.dat", std::ios::binary);
         for (int i = 0; i < NUMBER_TIME_TRIALS; i++) {
             time_file.write(reinterpret_cast<const char*>(&benchmarks[i]), sizeof(float));
         }

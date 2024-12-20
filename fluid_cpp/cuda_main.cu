@@ -7,10 +7,25 @@
 #include <fstream>
 #include "cuda/ParallelNavierStokes.cuh"
 
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void printProgress(double percentage) {
+    int val = (int) (percentage * 100);
+    int lpad = (int) (percentage * PBWIDTH);
+    int rpad = PBWIDTH - lpad;
+    printf("\r%3d%% [%.*s%*s]", val, lpad, PBSTR, rpad, "");
+    fflush(stdout);
+}
+
+#define NUMBER_TIME_TRIALS 20
+#define DO_UNIT_TEST false
+#define DO_BENCHMARKS true
+
 int main() {
     // set up the solver
-    int num_x_bins = 41;
-    int num_y_bins = 41;
+    int num_x_bins = 1000;
+    int num_y_bins = 1000;
     float width = 1.0;
     float height = 1.0;
     ParallelNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
@@ -38,59 +53,63 @@ int main() {
         solver.setVBoundaryCondition(num_x_bins - 1, y, 0.);  // no flow inside the right wall
     }
 
-    // Solve and retrieve the solution
-    solver.migrateSolve();
+    if (DO_UNIT_TEST) {
+        // Solve and retrieve the solution
+        solver.migrateSolve();
 
-    auto* u_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
-    auto* v_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
-    auto* p_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
-    solver.getUValues(u_values);
-    solver.getVValues(v_values);
-    solver.getPValues(p_values);
+        auto* u_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
+        auto* v_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
+        auto* p_values = static_cast<float*>(malloc(sizeof(float) * num_x_bins * num_y_bins));
+        solver.getUValues(u_values);
+        solver.getVValues(v_values);
+        solver.getPValues(p_values);
 
-    // write solutions to file
-    std::ofstream u_file;
-    u_file.open("CudaUValues.float.dat", std::ios::binary);
-    std::ofstream v_file;
-    v_file.open("CudaVValues.float.dat", std::ios::binary);
-    std::ofstream p_file;
-    p_file.open("CudaPValues.float.dat", std::ios::binary);
-    for (int i = 0; i < num_x_bins * num_y_bins; i++) {
-        u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(float));
-        v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
-        p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
+        // write solutions to file
+        std::ofstream u_file;
+        u_file.open("CudaUValues.float.dat", std::ios::binary);
+        std::ofstream v_file;
+        v_file.open("CudaVValues.float.dat", std::ios::binary);
+        std::ofstream p_file;
+        p_file.open("CudaPValues.float.dat", std::ios::binary);
+        for (int i = 0; i < num_x_bins * num_y_bins; i++) {
+            u_file.write(reinterpret_cast<const char *>(&u_values[i]), sizeof(float));
+            v_file.write(reinterpret_cast<const char *>(&v_values[i]), sizeof(float));
+            p_file.write(reinterpret_cast<const char *>(&p_values[i]), sizeof(float));
+        }
+
+        // clean up
+        u_file.close();
+        v_file.close();
+        p_file.close();
+        free(u_values);
+        free(v_values);
+        free(p_values);
     }
 
-    // clean up
-    u_file.close();
-    v_file.close();
-    p_file.close();
-    free(u_values);
-    free(v_values);
-    free(p_values);
+    if (DO_BENCHMARKS) {
+        // run time trials for the solver
+        auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * NUMBER_TIME_TRIALS));
+        float compute_time_ms = 0.;
+        for (int i = 0; i < NUMBER_TIME_TRIALS; i++) {
+            auto start = std::chrono::high_resolution_clock::now();
+            solver.solve();
+            cudaDeviceSynchronize();
+            auto stop = std::chrono::high_resolution_clock::now();
 
-    // run time trials for the solver
-    int num_time_trials = 1;
-    auto* benchmarks = static_cast<float*>(malloc(sizeof(float) * num_time_trials));
-    float compute_time_ms = 0.;
-    for (int i = 0; i < num_time_trials; i++) {
-        auto start = std::chrono::high_resolution_clock::now();
-        solver.solve();
-        cudaDeviceSynchronize();
-        auto stop = std::chrono::high_resolution_clock::now();
+            float duration = float(std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()) * 1e-3;
+            benchmarks[i] = duration;
+            compute_time_ms += duration;
+            printProgress(double(i + 1) / double(NUMBER_TIME_TRIALS));
+        }
 
-        float duration = float(std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count()) * 1e-3;
-        benchmarks[i] = duration;
-        compute_time_ms += duration;
+        // log the results of the time trials to terminal and file
+        std::cout << std::endl << "Time trials complete on average in " << compute_time_ms / static_cast<float>(NUMBER_TIME_TRIALS) << "ms" << std::endl;
+        std::ofstream time_file;
+        time_file.open("CudaBenchmarks.float.dat", std::ios::binary);
+        for (int i = 0; i < NUMBER_TIME_TRIALS; i++) {
+            time_file.write(reinterpret_cast<const char*>(&benchmarks[i]), sizeof(float));
+        }
+        time_file.close();
+        free(benchmarks);
     }
-
-    // log the results of the time trials to terminal and file
-    std::cout << "Time trials complete on average in " << compute_time_ms / static_cast<float>(num_time_trials) << "ms" << std::endl;
-    std::ofstream time_file;
-    time_file.open("CudaBenchmarks.float.dat", std::ios::binary);
-    for (int i = 0; i < num_time_trials; i++) {
-        time_file.write(reinterpret_cast<const char*>(&benchmarks[i]), sizeof(float));
-    }
-    time_file.close();
-    free(benchmarks);
 }
