@@ -8,6 +8,7 @@
 #include "NavierStokesSolver.h"
 #include <thread>
 #include <shared_mutex>
+#include <barrier>
 
 #define THREADED_GRID_SIZE 8
 

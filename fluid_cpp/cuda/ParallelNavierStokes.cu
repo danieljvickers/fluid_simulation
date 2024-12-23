@@ -318,20 +318,20 @@ template <class T>
 void ParallelNavierStokes<T>::solve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
-        this->unifiedApproximateTimeStep();  // 771
-        this->unifiedComputeRightHand();  // 197
+        this->unifiedApproximateTimeStep();
+        this->unifiedComputeRightHand();
 
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
             // compute the Poisson step, enforce BCs, and enforce the pressure
-            this->computePoissonStepApproximation();  // 24.29 :: 1023.3
-            this->enforcePressureBoundaryConditions();  // 1.457 :: 66.5
-            this->updatePressure();  // 6.604 :: 265.881
+            this->computePoissonStepApproximation();
+            this->enforcePressureBoundaryConditions();
+            this->updatePressure();
         }
 
         // get the pressure central difference, correct the u and v values, and enforce BCs
-        this->unifiedVelocityCorrection();  // 217.622
-        this->enforceVelocityBoundaryConditions();  // 1.46
+        this->unifiedVelocityCorrection();
+        this->enforceVelocityBoundaryConditions();
     }
 }
 

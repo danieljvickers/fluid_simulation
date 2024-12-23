@@ -154,14 +154,6 @@ The results of 5000 time trials for the Python version is shown below.
 
 ![screenshot](figures/python_benchmarks.png)
 
-In all, this code is capable of performing small simulations and providing reasonable results. Later after optimiing performance, I will want to gather benchmarks on a much more stressing case. For that, I will want to gather data using the following parameters:
-- 1000x1000 bins in our grid
-- 1000 time steps forward
-- 50 poison steps to let the fluid settle
-- 20 time trials
-
-So that we can gather a fair metric of comparison, I will also present performance metrics for this time trial as well:
-
 
 
 
@@ -297,7 +289,9 @@ For perforamnce benchmarks, I am going to We can view the single-point precision
 
 ![screenshot](figures/cpp_float_benchmarks.png)
 
-I we see that the C++ version has imporved performance by about a factor of 2.5x. That is a nice performance gain in our small case. I also ran in our larger stressing case and recorded the following results:
+I we see that the C++ version has imporved performance by about a factor of 2.5x. That is a nice performance gain in our small case. Since we are mostly going to be testing large-scale parallelization, I also opted to run tests from here on on a 1000x1000 grid. Because this is a hobby for me, and it is running on my poor little home computer that isn't dedicated to compute, I only ran 20 time trials. This serial C++ implementation is to serve as the benchmark for our compute moving forward. The results are shown here:
+
+![screenshot](figures/serial_1000x_float_benchmarks.png)
 
 
 
@@ -391,7 +385,9 @@ void ThreadedNavierStokes<T>::solveThread(int index) {
 }
 ```
 
-This works quite well, and passes all of my unit tests. Let us see how the performance imporved!
+This works quite well, and passes all of my unit tests, but leaves a very small chance for a race condition if one of the threads can't clear the reset before the first thread arrives at the next synchronization. It turns out that there is a C++20 primitive that I was unaware of that exactly performs `synchThreads` without busy waiting and without the potential race condition. This primitive is `std::barrier`. I decided to upgrade from C++17 to C++20 and added a barrier, replacing all of the `syncThreads` calls with `sync_barrier.arrive_and_wait();`.
+
+Let us see how the performance imporved!
 
 #### Results
 
@@ -401,9 +397,11 @@ Let us take a look at our 41x41 test case first:
 
 You will immediately notice that the small-scale implementations perform quite poorly compared to the serial implementation. This result seems logical since there is a large amount of computational overhead associated with the thread synchronization, creation, and joining. When you add in the fact that the orignial code was already so fast, and the compiler may have a harder time optimizing certain regions of a parallel algorithm, our result seems to agree with reality. But, do we see improvement in our larger 1000x1000 case?
 
+![screenshot](figures/threaded_1000x_float_benchmarks.png)
 
+The answer is a luke-warm yes. I believe that we are hitting an issue with false sharing. I think that because I chose to space the memory that each thread is writing to close to the memeory that is is reading from in the struct that we are getting parallel threads performing redundant memory cache refreshes, which greatly slows down performance. This effect should be particularly strong in instances where cells must check the value of their neighbors.
 
-The answer is a strong yes.
+The net result is still about a 9% performance improvement, but that feels underwhelming when you consider the fact that wea are using 8x more compute resources. I may come back an optimize this out by separating the memory read and write locations, but for now I would like to continue to the CUDA version, as I anticipate that being significantly faster than my most-optimized threaded implementation.
 
 **But can it go EVEN faster?**
 
@@ -462,13 +460,26 @@ So, how did all of that work go? First are my recorded benchmarks in the 41x41 c
 
 ![screenshot](figures/cuda_float_benchmarks.png)
 
-I also recorded benchmarks in our 1000x1000 case:
+You will notice that this version has a performance loss relative to the serial C++ version. At this grid size, the framework used to allow parallelization simply has too much overhead associated with it to yeild a performance improvement. I often tell people that using a GPU to speed up your code is similar to using a shotgun to imrpove your accuracy. Your approach is often simply to throw more stuff at the problem and hope that it makes up for you being bad at shooting. However, if you are shooting at such a close and easy target that you don't need the shotgun, then it is simply a lot of extra bulk carried around for now reason. The same is true for our GPU. GPUs are the happiest when they have a lot of compute to keep them occupied so that they can run at full power. There is simply not enough compute in the 41x41 grid to keep my GPU happy and running. The result is that we have a lot of bulk that we are bringing along to move memory around, set up kernels, and synchronize our threads.
 
+However, for the right target, the shotgun is not only a reasonable choice, but can be the only correct choice. This becomes true in our larger grid of 1000x1000 cells. In this case, we have the compute to keep the GPU working at a higher occupancy where we can get more work our of our threads. The results are shown below.:
 
-That seems like a disapointing result. Why did we see a slight slow-down in our small case and only a mild performance at scale after all the work to port the code to CUDA? In short, the answer has to do with 2 things:
+![screenshot](figures/cuda_1000x_float_benchmarks.png)
 
-1. This is extremely hardware dependent. A 2080 super is not considered a high-performance GPU. I would suspect that on more-modern hardware, like a 3090 or a 4090, we would be better than the serial implementation, even in the small test case. On a super-cluster computer, like an NVIDIA L40S, A100, or H100, these benchmarks are likely to be in the low-double-digit to single-digit milisecond range on the same test case.
+Now THAT is pod racing!
 
-2. This CUDA code is not optimized. Specifically, I have made two sacrifices to the performance of our memory accesses. First, I opted to keep our old data structure from the serial implementation of the `NavierStokesCell` format. The problem with this is that is means that we are often copying over more data than we need each time we perform an initial memory read or write. Second is that we are not leveraging the shared memory accessible to us. The use of multiple global-memory reads and writes is extremely inefficient, as the memory is physically located quite far from the CUDA cores on the GPU. It is more-efficient to perform memory accesses from lower-level memory. In particular, it is common to utilize a memory region known as "shared memory", which is shared between threads in a block, and has faster memory read and write time than global device memory.
+This is a 10x speedup in the 1000x1000 grid case vs. our serial C++ implementation. The perfroamcne here is HIGHLY hardware dependent. I was allowed to run some trial benchmarks of this code on a proper server with higher-performance GPUs. That resulted in run times closer to 16 seconds total for this test case. The results are clear that once you pass a certain threshold for compute in this case that is simply makes sense to swap to our shotgun (CUDA) approach. The good news here is that is only slows us down by about 20%-30% from the efficient C++ version in the 41x41 case. This means that I will almost always want to pick this CUDA version for all but the slowest of grids in a head-to-head comparison.
 
-At this time, I do not wish to change the dimenstions of the benchmark case nor upgrade my GPU. However, I can optimize the use of memory in our grids to address issue number 3. In particular, I would like to implement an optimization algorithm for CUDA known as "tiling", which improves performance via the use of shared memory. That will be the topic of discussion in the next section.
+**BUT CAN IT GO EVEN FASTER???**
+
+### Tiled Implementation
+
+#### What is tiling
+
+There are a few optimizations that we can do from here that will get progressively more GPU dependent in their effectiveness. The main issue that we still have is that we are not well-utilizing our cache memory, but instead making many reads and writes to global device memory. In particular, in steps like the Poisson step approximation and the compute of the laplacians, we are having multiple threads access an overlapping region of memory. The result is that we are not able to properly utilize the L1 nor L2 caches, but we would like to still avoid the expensive global device memory accesses. It turns out that CUDA has a level of cache memory in between that could help us called "shared memory", which is shared between all threads in a grid. If you ensure that all of the threads in a similar grid are operating relatively closely to each other in terms of the overlapping memory, then you can have all of them performing more-optimal shared memory cache reads. Unlike L1 and L2 cahce, shared memory must be explicitly allocated and managed through CUDA.
+
+The use of shared memory to allow threads in a block to read from an overlapping region of memory is known as "tiling". In this seciton, I would like to implement one final verison of this solver utilizing tiling to speed up some kernels.
+
+#### Code Explained
+
+#### Results

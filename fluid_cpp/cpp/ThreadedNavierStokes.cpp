@@ -5,12 +5,15 @@
 #include "ThreadedNavierStokes.h"
 #include <thread>
 #include <shared_mutex>
+#include <barrier>
 
+static std::barrier sync_barrier(THREADED_GRID_SIZE);
 
 template <class T>
 ThreadedNavierStokes<T>::ThreadedNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
     : NavierStokesSolver<T>(box_dim_x, box_dim_y, domain_size_x, domain_size_y) {
     this->worker_threads = new std::thread[THREADED_GRID_SIZE];
+    // this->sync_barrier(THREADED_GRID_SIZE);
 }
 
 template <class T>
@@ -33,26 +36,26 @@ void ThreadedNavierStokes<T>::solveThread(int index) {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
         this->unifiedApproximateTimeStep(index);
-        this->syncThreads();
+        sync_barrier.arrive_and_wait();
 
         this->unifiedComputeRightHand(index);
-        this->syncThreads();
+        sync_barrier.arrive_and_wait();
 
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
             this->computePoissonStepApproximation(index);
-            this->syncThreads();
+            sync_barrier.arrive_and_wait();
 
             this->enforcePressureBoundaryConditions(index);
             this->updatePressure(index);
-            this->syncThreads();
+            sync_barrier.arrive_and_wait();
         }
 
         this->unifiedVelocityCorrection(index);
-        this->syncThreads();
+        sync_barrier.arrive_and_wait();
 
         this->enforceVelocityBoundaryConditions(index);
-        this->syncThreads();
+        sync_barrier.arrive_and_wait();
     }
 }
 

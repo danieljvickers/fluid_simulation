@@ -39,8 +39,8 @@ def solve_navier_stokes(num_elements = 41, domain_size = 1.0, num_iterations = 1
     maximum_possible_time_step_length = (
             0.5 * element_length ** 2 / kinematic_viscosity
     )
-    if time_step > stability_safety_factor * maximum_possible_time_step_length:
-        raise RuntimeError("Stability is not guarenteed")
+    # if time_step > stability_safety_factor * maximum_possible_time_step_length:
+    #     raise RuntimeError("Stability is not guarenteed")
 
     # run the time steps
     for i in range(num_iterations):

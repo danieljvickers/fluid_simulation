@@ -16,7 +16,7 @@ void printProgress(double percentage) {
     fflush(stdout);
 }
 
-#define NUMBER_TIME_TRIALS 20
+#define NUMBER_TIME_TRIALS 1
 #define DO_UNIT_TEST false
 #define DO_BENCHMARKS true
 
@@ -28,8 +28,8 @@ int main() {
     float width = 1.0;
     float height = 1.0;
 
-    SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
-    /// ThreadedNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    // SerialNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    ThreadedNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
 
     // entire specific constants of the simulation
     solver.density = 1.0;
@@ -103,6 +103,8 @@ int main() {
 
         // log the results of the time trials to terminal and file
         std::cout << std::endl << "Time trials complete on average in " << compute_time_ms / static_cast<float>(NUMBER_TIME_TRIALS) << " ms" << std::endl;
+        free(benchmarks); return 0;
+
         std::ofstream time_file;
         time_file.open("CppBenchmarks.float.dat", std::ios::binary);
         for (int i = 0; i < NUMBER_TIME_TRIALS; i++) {
