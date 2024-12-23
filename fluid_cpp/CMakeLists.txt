@@ -15,6 +15,8 @@ add_library(fluid_cpp SHARED
         cuda/ParallelNavierStokes.cuh
         cpp/ThreadedNavierStokes.cpp
         cpp/ThreadedNavierStokes.h
+        cuda/TiledNavierStokes.cu
+        cuda/TiledNavierStokes.cuh
 )
 
 add_executable(main main.cpp)

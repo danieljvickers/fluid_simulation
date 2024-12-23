@@ -19,8 +19,8 @@ void printProgress(double percentage) {
 }
 
 #define NUMBER_TIME_TRIALS 20
-#define DO_UNIT_TEST false
-#define DO_BENCHMARKS true
+#define DO_UNIT_TEST true
+#define DO_BENCHMARKS false
 
 int main() {
     // set up the solver
@@ -33,8 +33,8 @@ int main() {
     // entire specific constants of the simulation
     solver.density = 1.0;
     solver.kinematic_viscosity = 0.1;
-    solver.num_iterations = 1000;
-    solver.num_poisson_iterations = 50;
+    solver.num_iterations = 1;
+    solver.num_poisson_iterations = 1;
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
 
