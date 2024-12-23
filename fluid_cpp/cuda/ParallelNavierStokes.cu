@@ -307,7 +307,7 @@ void ParallelNavierStokes<T>::migrateDeviceToHost() {
 template <class T>
 void ParallelNavierStokes<T>::createKernelDims() {
     dim3 block_size(KERNEL_2D_WIDTH, KERNEL_2D_HEIGHT);  // compute the size of each block
-    dim3 grid_size = dim3(GRID_2D_WIDTH, GRID_2D_HEIGHT);
+    dim3 grid_size(GRID_2D_WIDTH, GRID_2D_HEIGHT); // compute the number of blocks
 
     this->block_size = block_size;
     this->grid_size = grid_size;
@@ -318,20 +318,20 @@ template <class T>
 void ParallelNavierStokes<T>::solve() {
     // loop over each time step
     for (int i = 0; i < this->num_iterations; i++) {
-        this->unifiedApproximateTimeStep();  // 771
-        this->unifiedComputeRightHand();  // 197
+        this->unifiedApproximateTimeStep();
+        this->unifiedComputeRightHand();
 
         // take a series of poisson steps to approximate the pressure in each cell
         for (int j = 0; j < this->num_poisson_iterations; j++) {
             // compute the Poisson step, enforce BCs, and enforce the pressure
-            this->computePoissonStepApproximation();  // 24.29 :: 1023.3
-            this->enforcePressureBoundaryConditions();  // 1.457 :: 66.5
-            this->updatePressure();  // 6.604 :: 265.881
+            this->computePoissonStepApproximation();
+            this->enforcePressureBoundaryConditions();
+            this->updatePressure();
         }
 
         // get the pressure central difference, correct the u and v values, and enforce BCs
-        this->unifiedVelocityCorrection();  // 217.622
-        this->enforceVelocityBoundaryConditions();  // 1.46
+        this->unifiedVelocityCorrection();
+        this->enforceVelocityBoundaryConditions();
     }
 }
 
@@ -359,9 +359,6 @@ void ParallelNavierStokes<T>::enforceVelocityBoundaryConditions() {
 
 template <class T>
 void ParallelNavierStokes<T>::unifiedApproximateTimeStep() {
-    // vector_time_step<T><<<this->grid_size, this->block_size>>>(this->d_u, this->d_v, this->d_u_temp, this->d_v_temp, this->box_dimension_x, this->box_dimension_y,
-    //     this->element_length_x,this->element_length_y, this->kinematic_viscosity, this->time_step);
-
     unified_timestep_kernel<T><<<this->grid_size, this->block_size>>>(this->d_cells, this->box_dimension_x, this->box_dimension_y,
         this->element_length_x,this->element_length_y, this->kinematic_viscosity, this->time_step);
 }
