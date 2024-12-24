@@ -478,8 +478,106 @@ This is a 10x speedup in the 1000x1000 grid case vs. our serial C++ implementati
 
 There are a few optimizations that we can do from here that will get progressively more GPU dependent in their effectiveness. The main issue that we still have is that we are not well-utilizing our cache memory, but instead making many reads and writes to global device memory. In particular, in steps like the Poisson step approximation and the compute of the laplacians, we are having multiple threads access an overlapping region of memory. The result is that we are not able to properly utilize the L1 nor L2 caches, but we would like to still avoid the expensive global device memory accesses. It turns out that CUDA has a level of cache memory in between that could help us called "shared memory", which is shared between all threads in a grid. If you ensure that all of the threads in a similar grid are operating relatively closely to each other in terms of the overlapping memory, then you can have all of them performing more-optimal shared memory cache reads. Unlike L1 and L2 cahce, shared memory must be explicitly allocated and managed through CUDA.
 
-The use of shared memory to allow threads in a block to read from an overlapping region of memory is known as "tiling". In this seciton, I would like to implement one final verison of this solver utilizing tiling to speed up some kernels.
+The use of shared memory to allow threads in a block to read from an overlapping region of memory is known as "tiling". In this seciton, I would like to implement one final verison of this solver utilizing tiling to speed up some kernels. As you may have been able to tell, up to this point in the code we have been taking the cave-man approach to software optimization---we just keep trying to hit the problem with a bigger stick (or in this case, more threads). This optimization will be the first step that requires some consideration to implement well. It is also the case that sometimes this type of optimization reduces code performance, which we will have to keep an eye on.
 
 #### Code Explained
 
+The best function to optimize with this function is our Poisson step, as it is called multiple times every time step of our loop. It is the only pressure step that involves computations on neighboring cells. So we will explore the implementation with this. The optimization is performed in three steps:
+
+1. Copy global memory information to shared memroy
+2. Synchronize the threads so that no threads try to use neighbors before all calls are done
+3. Perform the compute with the data stores in shared memory, but write the output to global memory.
+
+Step one is easy, we can instantiate memory with the `__shared__` keyworord. This can either be done statically or dynamically. Since we want exactly one entry per grid element and thus know the amount of shared memory required beforehand, we are going to perform this computation statically. This can be done with:
+
+```c++
+__shared__ NavierStokesCell<T> s_cells[KERNEL_2D_WIDTH * KERNEL_2D_HEIGHT];
+int s_index = threadIdx.x * KERNEL_2D_HEIGHT + threadIdx.y;
+```
+
+Notice the prefix `s_`, which is standard syntax to indicate shared memory in CUDA. We also create an index inside of the shared memory array that each thread will access. We perform step 2 in a single line by calling `__syncthreads()`, which accomplishes the same as `std::barrier`, which we used in the multi-threaded version of this code. Finally, we index in the array:
+
+```c++
+NavierStokesCell<T> up;
+NavierStokesCell<T> down;
+NavierStokesCell<T> right;
+NavierStokesCell<T> left;
+if (threadIdx.y == 0) down = cells[index - 1];
+else down = s_cells[s_index - 1];
+if (threadIdx.y == KERNEL_2D_HEIGHT - 1) up = cells[index + 1];
+else up = s_cells[s_index + 1];
+if (threadIdx.x == 0) left = cells[index - height];
+else left = s_cells[s_index - 1];
+if (threadIdx.x == KERNEL_2D_WIDTH - 1) right = cells[index + height];
+else right = s_cells[s_index + KERNEL_2D_HEIGHT];
+__syncthreads();
+```
+
+Notice that we have to catch edge cases where the indexing would normally go outside of the array. In that case, we are only accessing that section of global memory a single time in this block, and thus there is no speedup to be gained from first copying it to shared memory. Because of this, we read the edge cases from global memory (I did test a version that first copies to shared memory, and the additional syncronization time made our code MUCH slower). Notice also the one final thread syncronization, as we must finish reading before we allow more threads to loop around and overwrite memory.
+
+That is it! From here, we simply perform our compute as normal. You can see a full version of our kernel here:
+
+```c++
+template <typename T>
+__global__ void tiled_poisson_step_kernel(NavierStokesCell<T>* cells, int width, int height, T element_length_x, T element_length_y) {
+    // get our location in the grid
+    const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
+
+    __shared__ NavierStokesCell<T> s_cells[KERNEL_2D_WIDTH * KERNEL_2D_HEIGHT];
+    int s_index = threadIdx.x * KERNEL_2D_HEIGHT + threadIdx.y;
+
+    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
+        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
+            int index = c * height + r;
+            s_cells[(threadIdx.x) * KERNEL_2D_HEIGHT + threadIdx.y] = cells[index];
+            __syncthreads();
+
+            NavierStokesCell<T> up;
+            NavierStokesCell<T> down;
+            NavierStokesCell<T> right;
+            NavierStokesCell<T> left;
+            if (threadIdx.y == 0) down = cells[index - 1];
+            else down = s_cells[s_index - 1];
+            if (threadIdx.y == KERNEL_2D_HEIGHT - 1) up = cells[index + 1];
+            else up = s_cells[s_index + 1];
+            if (threadIdx.x == 0) left = cells[index - height];
+            else left = s_cells[s_index - 1];
+            if (threadIdx.x == KERNEL_2D_WIDTH - 1) right = cells[index + height];
+            else right = s_cells[s_index + KERNEL_2D_HEIGHT];
+            __syncthreads();
+
+            T p_next = s_cells[s_index].right_hand_size * element_length_x * element_length_y;
+            p_next -= left.p + right.p + up.p + down.p;
+            cells[index].p_next = p_next * -0.25;
+
+        }
+    }
+}
+```
+
+I decided to only implement this on two kernels, the Poisson step kernel, and our combined derivative kernel (since a lot of compute is done with each cell before exiting). If these go well, we can always return to add it to the 3 other candidate kernels.
+
 #### Results
+
+Without delay, here are the results in our 41x41 case:
+
+![screenshot](figures/tiled_float_benchmarks.png)
+
+As you can tell, this is another slow down from our more-simple pure CUDA case. This follows the trend that we have seen of software slowing down in simple cases as we add optimizations for our larger cases. So how does this perform in the 1000x1000 case?
+
+![screenshot](figures/tiled_1000x_float_benchmarks.png)
+
+Now that is a disapointing result. As you can see, we received a pretty massive slowdown. I have seen this result before. While shared-memory cache hits are nice, the global memory VRAM accesses aren't so slow that the use of shared memory is THAT significant. Conversely, the cost of the `__syncthreads()` fucntion is particularly slow, forcing all of our threads to wait for the slowest thread to finish. What is more, because our grid size is only 16x16, we will always perform 64 64 global memory reads on the edges. A lower surface-area-to-volume ratio would allow the threads to perform more compute before syncronization and reduce the number of extra global memory reads per cycle. All in all, I believe the issue comes down to the number of threads that we can throw at the problem on my GPU, since we are capped at 16x16 due to my GPU's shared memory constraints.
+
+Notice again that we are using my outdated `NavierStokesCell` data structure, which is still causing performance problems due to the size of that data. If I were only copying in two or three arrays of floats, I would be able to perhaps raise the shared memory size to 32x32 and see a performance speed up. This result is quite common though. Speaking from personal experience, I have encountered situations on better GPUs where I was not limited by the size of shared memory that still saw slight performance degradation when adding tiling. While my older GPU and the excessive size of the cell data structure doesn't help, this is simply not ideal in all cases.
+
+## Conclusion
+
+In this project, we explored five seprate implementations of a 2D Navier-Stokes fluid solver. Our python version was very simple, resulting in tens of lines of code with modest performance at low grid sizes. To optimize our code, we implemented a serial C++ version, which saw a factor of 2.5x improvement over the python implementation. Since we are interested in grid sizes of about 1000x1000, this code was optimized for that use case.
+
+The first optimization considered was multi-threading the serial version in C++. That resulted in a very mild speed up, with performance limited by false sharing due to our cell data structure in `fluid_cpp/cpp/NavierStokesCell.h`. Our second optimization was moving compute to the GPU in CUDA, which resulted in a 10x speedup over the serial C++ implemenation. The CUDA verison is quite efficient, and could perhaps only be optimized by reducing the size of global memory data copied via removing the cells data structure in the form of float/double arrays. Finally, we attempted an implmentation of tiling in CUDA to optimize shared memory cache hits. Unfortunately, this use case was not ideal and caused a noticable slow down. This optimization would likely not be ideal in general, but was hurt by limited shared memory and the structure size of our cells.
+
+In summary, we succeded in implementing a very efficient Navier-Stokes solver via porting the code to the GPU. We saw an order of magnitude improvement in our 2D case. The common problem that occured in all optimizations was the poor structure of the `NavierStokesCell` data type, which held all of the cell information, including derivatives, boundary conditions, etc. While this data structure was convenient, it carried a significant amount of bulk and aligned our memory in an unideal way for multi-threaded implementations. It is my belief that a noticible performance gain can be seen in all three of our atempted optimizations by discarding the cell structure in favor of arrays for the data. Small preliminary tests have shown me that this is true in the CUDA cases. Because of the amount I learned in this project and because I would like to move on to 3D MHD simulation, I am not currently going to optimize these memory accesses here. Optimization must stop somewhere in favor of readability and finishing the task, or else we would all be writing in Asembly. I am content enough that I have identified the method of optimization and know how to implement it if I needed these simulations to move on any faster.
+
+I hope this was an enjoyable read and that this demonstrated my familiarity with mathematical/scitific compute in Python, C++, and CUDA. I also hope that this document demonstrates familiarity with data and metric analysis in a scientific setting. I encourage you to use this library in your own code projects if you have need of an optimized fluid simulation. Please reach out to me if you have questions about this code or my results. You can find my contact information on my website: www.danieljvickers.com

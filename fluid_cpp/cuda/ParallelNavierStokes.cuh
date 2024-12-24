@@ -15,7 +15,7 @@
 
 template <class T>
 class ParallelNavierStokes : public NavierStokesSolver<T> {
-private:
+protected:
     NavierStokesCell<T>* d_cells;
     T* d_u;
     T* d_v;

@@ -148,54 +148,6 @@ __global__ void unified_timestep_kernel(NavierStokesCell<T>* cells, int width, i
 }
 
 template <typename T>
-__global__ void vector_time_step(T* u, T* v, T* u_temp, T* v_temp, int width, int height, T element_length_x, T element_length_y, T kinematic_viscosity, T time_step) {
-    // get our location in the grid
-    const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
-    const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
-
-    for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
-        for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
-            int index = c * height + r;
-            int up = index + 1;
-            int down = index - 1;
-            int left = index - height;
-            int right = index + height;
-
-            T u_current = u[index];
-            T u_up = u[up];
-            T u_down = u[down];
-            T u_left = u[left];
-            T u_right = u[right];
-            T v_current = v[index];
-            T v_up = v[up];
-            T v_down = v[down];
-            T v_left = v[left];
-            T v_right = v[right];
-
-            // compute the central differences  // 200 ms
-            T du_dx = (u_right - u_left) / 2. / element_length_x;
-            T dv_dx = (v_right - v_left) / 2. / element_length_x;
-            T du_dy = (u_up - u_down) / 2. / element_length_y;
-            T dv_dy = (v_up - v_down) / 2. / element_length_y;
-
-            // compute the laplacian  // 380 ms
-            T u_laplacian = u_left + u_right + u_up + u_down;
-            u_laplacian = (u_laplacian - 4. * u_current) / element_length_x / element_length_y;
-            T v_laplacian = v_left + v_right + v_up + v_down;
-            v_laplacian = (v_laplacian - 4. * v_current) / element_length_x / element_length_y;
-
-            // get the time derivitives  // 755 ms
-            T du_dt = kinematic_viscosity * u_laplacian - u_current * du_dx - v_current * du_dy;
-            T dv_dt = kinematic_viscosity * v_laplacian - u_current * dv_dx - v_current * dv_dy;
-
-            // step forward in time  // 755 ms
-            u_temp[index] = u_current + time_step * du_dt;
-            v_temp[index] = v_current + time_step * dv_dt;
-        }
-    }
-}
-
-template <typename T>
 __global__ void compute_righthand_kernel(NavierStokesCell<T>* cells, int width, int height, T element_length_x, T element_length_y, T density, T time_step) {
     // get our location in the grid
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
