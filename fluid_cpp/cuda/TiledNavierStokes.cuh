@@ -8,7 +8,7 @@
 #include "ParallelNavierStokes.cuh"
 
 template <class T>
-class TiledNavierStokes : ParallelNavierStokes<T> {
+class TiledNavierStokes : public ParallelNavierStokes<T> {
 private:
     void tiledApproximateTimeStep();
     void tiledComputeRightHand();

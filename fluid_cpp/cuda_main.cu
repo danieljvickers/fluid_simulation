@@ -6,6 +6,7 @@
 #include <chrono>
 #include <fstream>
 #include "cuda/ParallelNavierStokes.cuh"
+#include "cuda/TiledNavierStokes.cuh"
 
 #define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
 #define PBWIDTH 60
@@ -19,8 +20,8 @@ void printProgress(double percentage) {
 }
 
 #define NUMBER_TIME_TRIALS 20
-#define DO_UNIT_TEST true
-#define DO_BENCHMARKS false
+#define DO_UNIT_TEST false
+#define DO_BENCHMARKS true
 
 int main() {
     // set up the solver
@@ -28,13 +29,14 @@ int main() {
     int num_y_bins = 1000;
     float width = 1.0;
     float height = 1.0;
-    ParallelNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);
+    // ParallelNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);  // 3312
+    TiledNavierStokes<float> solver(num_x_bins, num_y_bins, width, height); // 4095
 
     // entire specific constants of the simulation
     solver.density = 1.0;
     solver.kinematic_viscosity = 0.1;
-    solver.num_iterations = 1;
-    solver.num_poisson_iterations = 1;
+    solver.num_iterations = 1000;
+    solver.num_poisson_iterations = 50;
     solver.time_step = 0.001;
     solver.stability_safety_factor = 0.5;
 

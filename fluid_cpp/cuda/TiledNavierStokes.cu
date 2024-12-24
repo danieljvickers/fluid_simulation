@@ -14,33 +14,48 @@ __global__ void tiled_timestep_kernel(NavierStokesCell<T>* cells, int width, int
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
     const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
+    __shared__ NavierStokesCell<T> s_cells[KERNEL_2D_WIDTH * KERNEL_2D_HEIGHT];
+    int s_index = threadIdx.x * KERNEL_2D_HEIGHT + threadIdx.y;
+
     for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
         for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
-            int up = index + 1;
-            int down = index - 1;
-            int left = index - height;
-            int right = index + height;
+            s_cells[(threadIdx.x) * KERNEL_2D_HEIGHT + threadIdx.y] = cells[index];
+            __syncthreads();
+
+            NavierStokesCell<T> up;
+            NavierStokesCell<T> down;
+            NavierStokesCell<T> right;
+            NavierStokesCell<T> left;
+            if (threadIdx.y == 0) down = cells[index - 1];
+            else down = s_cells[s_index - 1];
+            if (threadIdx.y == KERNEL_2D_HEIGHT - 1) up = cells[index + 1];
+            else up = s_cells[s_index + 1];
+            if (threadIdx.x == 0) left = cells[index - height];
+            else left = s_cells[s_index - 1];
+            if (threadIdx.x == KERNEL_2D_WIDTH - 1) right = cells[index + height];
+            else right = s_cells[s_index + KERNEL_2D_HEIGHT];
+            __syncthreads();
 
             // compute the central differences
-            T du_dx = (cells[right].u - cells[left].u) / 2. / element_length_x;
-            T dv_dx = (cells[right].v - cells[left].v) / 2. / element_length_x;
-            T du_dy = (cells[up].u - cells[down].u) / 2. / element_length_y;
-            T dv_dy = (cells[up].v - cells[down].v) / 2. / element_length_y;
+            T du_dx = (right.u - left.u) / 2. / element_length_x;
+            T dv_dx = (right.v - left.v) / 2. / element_length_x;
+            T du_dy = (up.u - down.u) / 2. / element_length_y;
+            T dv_dy = (up.v - down.v) / 2. / element_length_y;
 
             // compute the laplacian
-            T u_laplacian = cells[left].u + cells[right].u + cells[up].u + cells[down].u;
-            u_laplacian = (u_laplacian - 4. * cells[index].u) / element_length_x / element_length_y;
-            T v_laplacian = cells[left].v + cells[right].v + cells[up].v + cells[down].v;
-            v_laplacian = (v_laplacian - 4. * cells[index].v) / element_length_x / element_length_y;
+            T u_laplacian = left.u + right.u + up.u + down.u;
+            u_laplacian = (u_laplacian - 4. * s_cells[s_index].u) / element_length_x / element_length_y;
+            T v_laplacian = left.v + right.v + up.v + down.v;
+            v_laplacian = (v_laplacian - 4. * s_cells[s_index].v) / element_length_x / element_length_y;
 
             // get the time derivitives
-            T du_dt = kinematic_viscosity * u_laplacian - cells[index].u * du_dx - cells[index].v * du_dy;
-            T dv_dt = kinematic_viscosity * v_laplacian - cells[index].u * dv_dx - cells[index].v * dv_dy;
+            T du_dt = kinematic_viscosity * u_laplacian - s_cells[s_index].u * du_dx - s_cells[s_index].v * du_dy;
+            T dv_dt = kinematic_viscosity * v_laplacian - s_cells[s_index].u * dv_dx - s_cells[s_index].v * dv_dy;
 
             // step forward in time
-            cells[index].u_next = cells[index].u + time_step * du_dt;
-            cells[index].v_next = cells[index].v + time_step * dv_dt;
+            cells[index].u_next = s_cells[s_index].u + time_step * du_dt;
+            cells[index].v_next = s_cells[s_index].v + time_step * dv_dt;
         }
     }
 }
@@ -72,21 +87,32 @@ __global__ void tiled_poisson_step_kernel(NavierStokesCell<T>* cells, int width,
     // get our location in the grid
     const int column = blockIdx.x * blockDim.x + threadIdx.x + 1;
     const int row = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    __shared__ NavierStokesCell* s_cells[(2 + KERNEL_2D_WIDTH) * (2 + KERNEL_2D_HEIGHT)];
 
-    int s_index = threadIdx.x *
+    __shared__ NavierStokesCell<T> s_cells[KERNEL_2D_WIDTH * KERNEL_2D_HEIGHT];
+    int s_index = threadIdx.x * KERNEL_2D_HEIGHT + threadIdx.y;
 
     for (int c = column; c < width - 1; c += gridDim.x * blockDim.x) {
         for (int r = row; r < height - 1; r += gridDim.y * blockDim.y) {
             int index = c * height + r;
-            int up = index + 1;
-            int down = index - 1;
-            int left = index - height;
-            int right = index + height;
+            s_cells[(threadIdx.x) * KERNEL_2D_HEIGHT + threadIdx.y] = cells[index];
+            __syncthreads();
 
-            // compute the Poisson step
-            T p_next = cells[index].right_hand_size * element_length_x * element_length_y;
-            p_next -= cells[left].p + cells[right].p + cells[up].p + cells[down].p;
+            NavierStokesCell<T> up;
+            NavierStokesCell<T> down;
+            NavierStokesCell<T> right;
+            NavierStokesCell<T> left;
+            if (threadIdx.y == 0) down = cells[index - 1];
+            else down = s_cells[s_index - 1];
+            if (threadIdx.y == KERNEL_2D_HEIGHT - 1) up = cells[index + 1];
+            else up = s_cells[s_index + 1];
+            if (threadIdx.x == 0) left = cells[index - height];
+            else left = s_cells[s_index - 1];
+            if (threadIdx.x == KERNEL_2D_WIDTH - 1) right = cells[index + height];
+            else right = s_cells[s_index + KERNEL_2D_HEIGHT];
+            __syncthreads();
+
+            T p_next = s_cells[s_index].right_hand_size * element_length_x * element_length_y;
+            p_next -= left.p + right.p + up.p + down.p;
             cells[index].p_next = p_next * -0.25;
         }
     }
@@ -124,17 +150,6 @@ __global__ void tiled_velocity_correction_kerenl(NavierStokesCell<T>* cells, int
 template <class T>
 TiledNavierStokes<T>::TiledNavierStokes(int box_dim_x, int box_dim_y, T domain_size_x, T domain_size_y)
     : ParallelNavierStokes<T>(box_dim_x, box_dim_y, domain_size_x, domain_size_y) {
-    cudaMalloc((void**)&this->d_cells, sizeof(NavierStokesCell<T>) * box_dim_x * box_dim_y);
-    cudaMalloc((void**)&this->d_u, sizeof(T) * box_dim_x * box_dim_y);
-    cudaMalloc((void**)&this->d_v, sizeof(T) * box_dim_x * box_dim_y);
-    cudaMalloc((void**)&this->d_u_temp, sizeof(T) * box_dim_x * box_dim_y);
-    cudaMalloc((void**)&this->d_v_temp, sizeof(T) * box_dim_x * box_dim_y);
-    cudaMalloc((void**)&this->d_p, sizeof(T) * box_dim_x * box_dim_y);
-
-    for (int x = 0; x < this->box_dimension_x; x++) {
-        cudaMemcpy(&(this->d_cells[x * this->box_dimension_y]), this->cells[x], sizeof(NavierStokesCell<T>) * this->box_dimension_y, cudaMemcpyHostToDevice);
-    }
-    this->createKernelDims();
 }
 
 template <class T>
