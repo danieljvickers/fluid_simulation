@@ -19,14 +19,14 @@ void printProgress(double percentage) {
     fflush(stdout);
 }
 
-#define NUMBER_TIME_TRIALS 20
+#define NUMBER_TIME_TRIALS 5000
 #define DO_UNIT_TEST false
 #define DO_BENCHMARKS true
 
 int main() {
     // set up the solver
-    int num_x_bins = 1000;
-    int num_y_bins = 1000;
+    int num_x_bins = 41;
+    int num_y_bins = 41;
     float width = 1.0;
     float height = 1.0;
     // ParallelNavierStokes<float> solver(num_x_bins, num_y_bins, width, height);  // 3312
